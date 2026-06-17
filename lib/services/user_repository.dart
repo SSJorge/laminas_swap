@@ -34,7 +34,13 @@ class UserRepository {
         'createdAt': now,
         'lastActiveAt': now,
         'location': {'comuna': ''},
-        'stats': {'unlockedToday': 0},
+        'stats': {
+          'unlockedToday': 0,
+          'totalCards': 0,
+          'missingCount': 0,
+          'obtainedCount': 0,
+          'duplicateCount': 0,
+        },
       });
     } else {
       await userRef.update({'lastActiveAt': now});
@@ -46,14 +52,16 @@ class UserRepository {
       await publicProfileRef.set({
         'displayName': cleanName,
         'comuna': '',
-        'missingIds': <String>[],
-        'duplicateIds': <String>[],
-        'duplicateCounts': <String, int>{},
+        'missingIds': [],
+        'duplicateIds': [],
         'lastActiveAt': now,
         'profileVisible': true,
       });
     } else {
-      await publicProfileRef.update({'lastActiveAt': now});
+      await publicProfileRef.set({
+        'lastActiveAt': now,
+        'duplicateCounts': FieldValue.delete(),
+      }, SetOptions(merge: true));
     }
   }
 
@@ -71,6 +79,7 @@ class UserRepository {
     final cleanName = displayName.trim().isEmpty
         ? 'Usuario'
         : displayName.trim();
+
     final cleanComuna = comuna.trim();
 
     await user.updateDisplayName(cleanName);
@@ -93,12 +102,13 @@ class UserRepository {
       'lastActiveAt': now,
       'profileVisible': profileVisible,
 
+      // Limpieza del modelo anterior.
+      // Ya no guardamos cantidades de repetidas.
+      'duplicateCounts': FieldValue.delete(),
+
       // Importante:
-      // Aquí NO se guarda WhatsApp, Instagram ni teléfono.
-      // El contacto real queda solo en users/{uid}.
-      'missingIds': <String>[],
-      'duplicateIds': <String>[],
-      'duplicateCounts': <String, int>{},
+      // No tocar missingIds ni duplicateIds aquí.
+      // Esos campos los actualiza CardRepository.
     }, SetOptions(merge: true));
   }
 

@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'cards_screen.dart';
 import 'profile_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -40,10 +41,9 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Base del MVP lista. Hoy solo dejaremos login, home y perfil.',
+                  'Registra tus láminas y prepara tu perfil para encontrar intercambios.',
                 ),
                 const SizedBox(height: 24),
-
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.person),
@@ -61,24 +61,28 @@ class HomeScreen extends StatelessWidget {
                     },
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
-                const Card(
+                Card(
                   child: ListTile(
-                    leading: Icon(Icons.style),
-                    title: Text('Láminas'),
-                    subtitle: Text('Esto se construye en el Día 2.'),
+                    leading: const Icon(Icons.style),
+                    title: const Text('Láminas'),
+                    subtitle: const Text(
+                      'Marca faltantes, obtenidas y repetidas.',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const CardsScreen()),
+                      );
+                    },
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 const Card(
                   child: ListTile(
                     leading: Icon(Icons.people),
                     title: Text('Matching'),
-                    subtitle: Text('Esto se construye en el Día 4.'),
+                    subtitle: Text('Esto se construye después.'),
                   ),
                 ),
               ],
