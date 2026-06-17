@@ -1,0 +1,7 @@
+flutter run -d chrome
+flutter run -d web-server --web-hostname localhost --web-port 5000
+http://localhost:5000/
+
+https://laminas-swap.web.app actualiza:
+flutter build web
+firebase deploy --only hosting
