@@ -17,6 +17,9 @@ class CardsScreen extends StatefulWidget {
 class _CardsScreenState extends State<CardsScreen> {
   late final CardRepository _cardRepository;
 
+  final Set<String> _savingCountryIds = <String>{};
+  final Set<String> _savingCardIds = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +33,16 @@ class _CardsScreenState extends State<CardsScreen> {
     required CardStatus newStatus,
     required Map<String, CardStatus> currentStatuses,
   }) async {
+    final cardId = card.definition.id;
+
+    if (_savingCardIds.contains(cardId)) {
+      return;
+    }
+
+    setState(() {
+      _savingCardIds.add(cardId);
+    });
+
     try {
       await _cardRepository.setCardStatus(
         uid: uid,
@@ -43,6 +56,12 @@ class _CardsScreenState extends State<CardsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error guardando lámina: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _savingCardIds.remove(cardId);
+        });
+      }
     }
   }
 
@@ -53,6 +72,14 @@ class _CardsScreenState extends State<CardsScreen> {
     required int direction,
     required Map<String, CardStatus> currentStatuses,
   }) async {
+    if (_savingCountryIds.contains(country.id)) {
+      return;
+    }
+
+    setState(() {
+      _savingCountryIds.add(country.id);
+    });
+
     try {
       await _cardRepository.shiftCountryStatuses(
         uid: uid,
@@ -66,6 +93,12 @@ class _CardsScreenState extends State<CardsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error actualizando país: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _savingCountryIds.remove(country.id);
+        });
+      }
     }
   }
 
@@ -89,7 +122,7 @@ class _CardsScreenState extends State<CardsScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final statuses = snapshot.data ?? {};
+          final statuses = snapshot.data ?? <String, CardStatus>{};
 
           final missingCount = _countByStatus(statuses, CardStatus.missing);
           final obtainedCount = _countByStatus(statuses, CardStatus.obtained);
@@ -124,9 +157,10 @@ class _CardsScreenState extends State<CardsScreen> {
                   const SizedBox(height: 12),
                   for (final country in albumCountries)
                     _CountrySection(
-                      uid: user.uid,
                       country: country,
                       statuses: statuses,
+                      isSavingCountry: _savingCountryIds.contains(country.id),
+                      savingCardIds: _savingCardIds,
                       onCardTap: ({required card, required newStatus}) {
                         return _changeSingleCard(
                           context: context,
@@ -175,21 +209,25 @@ class _CardsScreenState extends State<CardsScreen> {
 
 class _CountrySection extends StatelessWidget {
   const _CountrySection({
-    required this.uid,
     required this.country,
     required this.statuses,
+    required this.isSavingCountry,
+    required this.savingCardIds,
     required this.onCardTap,
     required this.onShiftCountry,
   });
 
-  final String uid;
   final AlbumCountry country;
   final Map<String, CardStatus> statuses;
+  final bool isSavingCountry;
+  final Set<String> savingCardIds;
+
   final Future<void> Function({
     required CardDefinitionViewModel card,
     required CardStatus newStatus,
   })
   onCardTap;
+
   final Future<void> Function(int direction) onShiftCountry;
 
   @override
@@ -206,9 +244,11 @@ class _CountrySection extends StatelessWidget {
     final missing = cards
         .where((card) => card.status == CardStatus.missing)
         .length;
+
     final obtained = cards
         .where((card) => card.status == CardStatus.obtained)
         .length;
+
     final duplicate = cards
         .where((card) => card.status == CardStatus.duplicate)
         .length;
@@ -227,7 +267,11 @@ class _CountrySection extends StatelessWidget {
             children: [
               Expanded(
                 child: FilledButton.tonalIcon(
-                  onPressed: () => onShiftCountry(1),
+                  onPressed: isSavingCountry
+                      ? null
+                      : () {
+                          onShiftCountry(1);
+                        },
                   icon: const Icon(Icons.add),
                   label: const Text('+1 a todo el país'),
                 ),
@@ -235,13 +279,21 @@ class _CountrySection extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton.tonalIcon(
-                  onPressed: () => onShiftCountry(-1),
+                  onPressed: isSavingCountry
+                      ? null
+                      : () {
+                          onShiftCountry(-1);
+                        },
                   icon: const Icon(Icons.remove),
                   label: const Text('-1 a todo el país'),
                 ),
               ),
             ],
           ),
+          if (isSavingCountry) ...[
+            const SizedBox(height: 12),
+            const LinearProgressIndicator(),
+          ],
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -267,9 +319,13 @@ class _CountrySection extends StatelessWidget {
                 ),
                 itemBuilder: (context, index) {
                   final card = cards[index];
+                  final isSavingCard =
+                      isSavingCountry ||
+                      savingCardIds.contains(card.definition.id);
 
                   return _CardTile(
                     card: card,
+                    isSaving: isSavingCard,
                     onTap: () {
                       return onCardTap(card: card, newStatus: card.status.next);
                     },
@@ -285,9 +341,14 @@ class _CountrySection extends StatelessWidget {
 }
 
 class _CardTile extends StatelessWidget {
-  const _CardTile({required this.card, required this.onTap});
+  const _CardTile({
+    required this.card,
+    required this.isSaving,
+    required this.onTap,
+  });
 
   final CardDefinitionViewModel card;
+  final bool isSaving;
   final Future<void> Function() onTap;
 
   @override
@@ -308,7 +369,11 @@ class _CardTile extends StatelessWidget {
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
+      onTap: isSaving
+          ? null
+          : () {
+              onTap();
+            },
       child: Ink(
         decoration: BoxDecoration(
           color: backgroundColor,
@@ -317,24 +382,40 @@ class _CardTile extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(8),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Stack(
             children: [
-              Text(
-                card.definition.number.toString(),
-                style: Theme.of(context).textTheme.titleMedium,
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      card.definition.number.toString(),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      card.status.shortLabel,
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      card.status.label,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                card.status.shortLabel,
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                card.status.label,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.labelSmall,
-              ),
+              if (isSaving)
+                const Positioned(
+                  right: 0,
+                  top: 0,
+                  child: SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
             ],
           ),
         ),
@@ -361,6 +442,6 @@ class CardDefinitionViewModel {
     required this.status,
   });
 
-  final dynamic definition;
+  final CardDefinition definition;
   final CardStatus status;
 }
