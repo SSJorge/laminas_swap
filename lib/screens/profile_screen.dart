@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../data/chile_locations.dart';
 import '../services/user_repository.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -13,12 +14,14 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _displayNameController = TextEditingController();
-  final _comunaController = TextEditingController();
   final _contactValueController = TextEditingController();
 
-  String _contactType = 'whatsapp';
+  String _selectedRegionId = 'valparaiso';
+  String _selectedComuna = 'Quilpué';
+  String _contactType = 'email';
+
   bool _contactVisible = true;
-  bool _profileVisible = false;
+  bool _profileVisible = true;
   bool _isLoading = true;
   bool _isSaving = false;
   String? _message;
@@ -27,6 +30,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _db = FirebaseFirestore.instance;
 
   late final UserRepository _userRepository;
+
+  ChileRegion get _selectedRegion => findRegionById(_selectedRegionId);
 
   @override
   void initState() {
@@ -38,7 +43,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     _displayNameController.dispose();
-    _comunaController.dispose();
     _contactValueController.dispose();
     super.dispose();
   }
@@ -56,19 +60,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (data == null) {
         _displayNameController.text = user.displayName ?? '';
+        _selectedRegionId = 'valparaiso';
+        _selectedComuna = 'Quilpué';
+        _contactType = 'email';
         return;
       }
 
       _displayNameController.text = data['displayName'] ?? '';
-      _contactType = data['contactType'] ?? 'whatsapp';
+      _contactType = _safeContactType(data['contactType']);
       _contactValueController.text = data['contactValue'] ?? '';
       _contactVisible = data['contactVisible'] ?? true;
-      _profileVisible = data['profileVisible'] ?? false;
+      _profileVisible = data['profileVisible'] ?? true;
 
       final location = data['location'];
 
       if (location is Map) {
-        _comunaController.text = location['comuna'] ?? '';
+        final loadedRegionId = location['regionId'];
+
+        _selectedRegionId = _safeRegionId(loadedRegionId);
+        _selectedComuna = _safeComuna(
+          regionId: _selectedRegionId,
+          comuna: location['comuna'],
+        );
+      } else {
+        _selectedRegionId = 'valparaiso';
+        _selectedComuna = 'Quilpué';
       }
     } catch (e) {
       debugPrint('ERROR cargando perfil: $e');
@@ -100,10 +116,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
+      final region = _selectedRegion;
+
       await _userRepository.updateProfile(
         user: user,
         displayName: _displayNameController.text,
-        comuna: _comunaController.text,
+        regionId: region.id,
+        region: region.name,
+        comuna: _selectedComuna,
         contactType: _contactType,
         contactValue: _contactValueController.text,
         contactVisible: _contactVisible,
@@ -130,8 +150,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  String _safeContactType(dynamic value) {
+    if (value == 'email' || value == 'whatsapp' || value == 'instagram') {
+      return value;
+    }
+
+    return 'email';
+  }
+
+  String _safeRegionId(dynamic value) {
+    if (value is String && chileRegions.any((region) => region.id == value)) {
+      return value;
+    }
+
+    return 'valparaiso';
+  }
+
+  String _safeComuna({required String regionId, required dynamic comuna}) {
+    final region = findRegionById(regionId);
+
+    if (comuna is String && region.comunas.contains(comuna)) {
+      return comuna;
+    }
+
+    if (region.id == 'valparaiso' && region.comunas.contains('Quilpué')) {
+      return 'Quilpué';
+    }
+
+    return region.comunas.first;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final userEmail = _auth.currentUser?.email ?? '';
+
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -152,30 +204,72 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Nombre visible',
-                    helperText:
-                        'Este nombre sí aparecerá en tu perfil público.',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _comunaController,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Comuna',
-                    hintText: 'Ej: Santiago, Maipú, Providencia',
-                    helperText: 'No escribas dirección exacta.',
                     border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  initialValue: _selectedRegionId,
+                  decoration: const InputDecoration(
+                    labelText: 'Región',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    for (final region in chileRegions)
+                      DropdownMenuItem(
+                        value: region.id,
+                        child: Text(region.name),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+
+                    final newRegion = findRegionById(value);
+
+                    setState(() {
+                      _selectedRegionId = newRegion.id;
+
+                      if (newRegion.id == 'valparaiso' &&
+                          newRegion.comunas.contains('Quilpué')) {
+                        _selectedComuna = 'Quilpué';
+                      } else {
+                        _selectedComuna = newRegion.comunas.first;
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  key: ValueKey(_selectedRegionId),
+                  initialValue: _selectedComuna,
+                  decoration: const InputDecoration(
+                    labelText: 'Comuna',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    for (final comuna in _selectedRegion.comunas)
+                      DropdownMenuItem(value: comuna, child: Text(comuna)),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+
+                    setState(() {
+                      _selectedComuna = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
                   initialValue: _contactType,
                   decoration: const InputDecoration(
-                    labelText: 'Tipo de contacto privado',
+                    labelText: 'Modo de contacto',
                     border: OutlineInputBorder(),
                   ),
                   items: const [
+                    DropdownMenuItem(
+                      value: 'email',
+                      child: Text('Correo electrónico'),
+                    ),
                     DropdownMenuItem(
                       value: 'whatsapp',
                       child: Text('WhatsApp'),
@@ -183,10 +277,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     DropdownMenuItem(
                       value: 'instagram',
                       child: Text('Instagram'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'telefono',
-                      child: Text('Teléfono'),
                     ),
                   ],
                   onChanged: (value) {
@@ -198,23 +288,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: _contactValueController,
-                  textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(
-                    labelText: 'Contacto privado',
-                    hintText: 'Ej: +56912345678 o @usuario',
-                    helperText:
-                        'Solo se mostrará cuando otro usuario desbloquee tu perfil.',
-                    border: OutlineInputBorder(),
+                if (_contactType == 'email')
+                  TextField(
+                    enabled: false,
+                    controller: TextEditingController(text: userEmail),
+                    decoration: const InputDecoration(
+                      labelText: 'Correo electrónico',
+                      helperText:
+                          'Se usará el email de tu cuenta. No queda público hasta desbloqueo.',
+                      border: OutlineInputBorder(),
+                    ),
+                  )
+                else
+                  TextField(
+                    controller: _contactValueController,
+                    textInputAction: TextInputAction.done,
+                    decoration: InputDecoration(
+                      labelText: _contactType == 'whatsapp'
+                          ? 'WhatsApp'
+                          : 'Instagram',
+                      hintText: _contactType == 'whatsapp'
+                          ? 'Ej: +56912345678'
+                          : 'Ej: @usuario',
+                      helperText:
+                          'Solo se mostrará cuando otro usuario desbloquee tu perfil.',
+                      border: const OutlineInputBorder(),
+                    ),
                   ),
-                ),
                 const SizedBox(height: 12),
                 SwitchListTile(
                   value: _profileVisible,
                   title: const Text('Perfil visible'),
                   subtitle: const Text(
-                    'Si está apagado, no deberías aparecer en el matching.',
+                    'Si lo apagas, no aparecerás en resultados de matching.',
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -226,7 +332,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   value: _contactVisible,
                   title: const Text('Permitir mostrar contacto al desbloquear'),
                   subtitle: const Text(
-                    'Tu contacto no queda público directamente.',
+                    'Tu contacto nunca queda público directamente.',
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -280,9 +386,9 @@ class _PrivacyNotice extends StatelessWidget {
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
-                'Para el MVP solo usaremos comuna aproximada. '
+                'Usaremos solo región y comuna aproximada. '
                 'No guardes dirección exacta. Tu contacto real se guarda privado '
-                'y no aparece en el perfil público.',
+                'y no aparece en tu perfil público.',
               ),
             ),
           ],

@@ -29,16 +29,19 @@ class UserRepository {
       batch.set(userRef, {
         'displayName': cleanName,
         'email': user.email,
-        'contactType': 'whatsapp',
-        'contactValue': '',
+        'contactType': 'email',
+        'contactValue': user.email ?? '',
         'contactVisible': true,
-        'profileVisible': false,
+        'profileVisible': true,
         'createdAt': now,
         'lastActiveAt': now,
         'updatedAt': now,
         'location': {
-          'comuna': '',
-          'comunaKey': '',
+          'regionId': 'valparaiso',
+          'region': 'Valparaíso',
+          'regionKey': 'valparaiso',
+          'comuna': 'Quilpué',
+          'comunaKey': 'quilpue',
           'countryCode': 'CL',
           'precision': 'comuna',
         },
@@ -56,21 +59,24 @@ class UserRepository {
 
     batch.set(publicProfileRef, {
       'displayName': cleanName,
-      'comuna': '',
-      'comunaKey': '',
+      'regionId': 'valparaiso',
+      'region': 'Valparaíso',
+      'regionKey': 'valparaiso',
+      'comuna': 'Quilpué',
+      'comunaKey': 'quilpue',
       'countryCode': 'CL',
       'locationPrecision': 'comuna',
       'missingIds': [],
       'duplicateIds': [],
       'lastActiveAt': now,
-      'profileVisible': false,
+      'profileVisible': true,
 
-      // Limpieza preventiva por si alguna versión vieja escribió campos indebidos.
       'contactType': FieldValue.delete(),
       'contactValue': FieldValue.delete(),
       'contactVisible': FieldValue.delete(),
       'email': FieldValue.delete(),
       'phone': FieldValue.delete(),
+      'telefono': FieldValue.delete(),
       'whatsapp': FieldValue.delete(),
       'instagram': FieldValue.delete(),
       'duplicateCounts': FieldValue.delete(),
@@ -82,6 +88,8 @@ class UserRepository {
   Future<void> updateProfile({
     required User user,
     required String displayName,
+    required String regionId,
+    required String region,
     required String comuna,
     required String contactType,
     required String contactValue,
@@ -92,23 +100,25 @@ class UserRepository {
         ? 'Usuario'
         : displayName.trim();
 
+    final cleanRegionId = regionId.trim();
+    final cleanRegion = region.trim();
+    final cleanRegionKey = _normalizeLocation(region);
     final cleanComuna = comuna.trim();
-    final cleanComunaKey = _normalizeComuna(cleanComuna);
+    final cleanComunaKey = _normalizeLocation(cleanComuna);
     final cleanContactType = _normalizeContactType(contactType);
-    final cleanContactValue = contactValue.trim();
 
-    if (cleanName.isEmpty) {
-      throw Exception('El nombre visible es obligatorio.');
+    final effectiveContactValue = _resolveContactValue(
+      user: user,
+      contactType: cleanContactType,
+      contactValue: contactValue,
+    );
+
+    if (cleanRegionId.isEmpty || cleanRegion.isEmpty) {
+      throw Exception('La región es obligatoria.');
     }
 
     if (cleanComuna.isEmpty) {
       throw Exception('La comuna es obligatoria.');
-    }
-
-    if (profileVisible && cleanContactValue.isEmpty) {
-      throw Exception(
-        'Si tu perfil está visible, agrega una forma de contacto.',
-      );
     }
 
     final now = FieldValue.serverTimestamp();
@@ -124,10 +134,13 @@ class UserRepository {
       'displayName': cleanName,
       'email': user.email,
       'contactType': cleanContactType,
-      'contactValue': cleanContactValue,
+      'contactValue': effectiveContactValue,
       'contactVisible': contactVisible,
       'profileVisible': profileVisible,
       'location': {
+        'regionId': cleanRegionId,
+        'region': cleanRegion,
+        'regionKey': cleanRegionKey,
         'comuna': cleanComuna,
         'comunaKey': cleanComunaKey,
         'countryCode': 'CL',
@@ -139,6 +152,9 @@ class UserRepository {
 
     batch.set(publicProfileRef, {
       'displayName': cleanName,
+      'regionId': cleanRegionId,
+      'region': cleanRegion,
+      'regionKey': cleanRegionKey,
       'comuna': cleanComuna,
       'comunaKey': cleanComunaKey,
       'countryCode': 'CL',
@@ -146,13 +162,13 @@ class UserRepository {
       'lastActiveAt': now,
       'profileVisible': profileVisible,
 
-      // Seguridad por diseño:
-      // publicProfiles nunca debe contener contacto real.
+      // Nunca exponer contacto real en publicProfiles.
       'contactType': FieldValue.delete(),
       'contactValue': FieldValue.delete(),
       'contactVisible': FieldValue.delete(),
       'email': FieldValue.delete(),
       'phone': FieldValue.delete(),
+      'telefono': FieldValue.delete(),
       'whatsapp': FieldValue.delete(),
       'instagram': FieldValue.delete(),
     }, SetOptions(merge: true));
@@ -184,16 +200,48 @@ class UserRepository {
     final cleanValue = value.trim().toLowerCase();
 
     switch (cleanValue) {
+      case 'email':
       case 'whatsapp':
       case 'instagram':
-      case 'telefono':
         return cleanValue;
       default:
-        return 'whatsapp';
+        return 'email';
     }
   }
 
-  String _normalizeComuna(String value) {
+  String _resolveContactValue({
+    required User user,
+    required String contactType,
+    required String contactValue,
+  }) {
+    if (contactType == 'email') {
+      final email = user.email?.trim() ?? '';
+
+      if (email.isEmpty) {
+        throw Exception('Tu cuenta no tiene email asociado.');
+      }
+
+      return email;
+    }
+
+    final cleanValue = contactValue.trim();
+
+    if (cleanValue.isEmpty) {
+      if (contactType == 'whatsapp') {
+        throw Exception('Escribe tu WhatsApp.');
+      }
+
+      if (contactType == 'instagram') {
+        throw Exception('Escribe tu Instagram.');
+      }
+
+      throw Exception('Escribe una forma de contacto.');
+    }
+
+    return cleanValue;
+  }
+
+  String _normalizeLocation(String value) {
     return value
         .trim()
         .toLowerCase()

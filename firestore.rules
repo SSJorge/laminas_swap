@@ -14,6 +14,9 @@ service cloud.firestore {
     function publicProfileHasOnlyAllowedFields() {
       return request.resource.data.keys().hasOnly([
         'displayName',
+        'regionId',
+        'region',
+        'regionKey',
         'comuna',
         'comunaKey',
         'countryCode',
