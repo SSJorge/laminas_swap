@@ -18,13 +18,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _contactType = 'whatsapp';
   bool _contactVisible = true;
-  bool _profileVisible = true;
+  bool _profileVisible = false;
   bool _isLoading = true;
   bool _isSaving = false;
   String? _message;
 
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
+
   late final UserRepository _userRepository;
 
   @override
@@ -53,28 +54,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final doc = await _db.collection('users').doc(user.uid).get();
       final data = doc.data();
 
-      if (data != null) {
-        _displayNameController.text = data['displayName'] ?? '';
-        _contactType = data['contactType'] ?? 'whatsapp';
-        _contactValueController.text = data['contactValue'] ?? '';
-        _contactVisible = data['contactVisible'] ?? true;
-        _profileVisible = data['profileVisible'] ?? true;
-
-        final location = data['location'];
-        if (location is Map<String, dynamic>) {
-          _comunaController.text = location['comuna'] ?? '';
-        }
-      } else {
+      if (data == null) {
         _displayNameController.text = user.displayName ?? '';
+        return;
+      }
+
+      _displayNameController.text = data['displayName'] ?? '';
+      _contactType = data['contactType'] ?? 'whatsapp';
+      _contactValueController.text = data['contactValue'] ?? '';
+      _contactVisible = data['contactVisible'] ?? true;
+      _profileVisible = data['profileVisible'] ?? false;
+
+      final location = data['location'];
+
+      if (location is Map) {
+        _comunaController.text = location['comuna'] ?? '';
       }
     } catch (e) {
       debugPrint('ERROR cargando perfil: $e');
 
-      if (mounted) {
-        setState(() {
-          _message = 'Error cargando perfil: ${e.toString()}';
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        _message = 'Error cargando perfil: ${e.toString()}';
+      });
     } finally {
       if (mounted) {
         setState(() {
@@ -97,14 +100,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      if (_displayNameController.text.trim().isEmpty) {
-        throw Exception('El nombre visible es obligatorio.');
-      }
-
-      if (_comunaController.text.trim().isEmpty) {
-        throw Exception('La comuna es obligatoria para el MVP.');
-      }
-
       await _userRepository.updateProfile(
         user: user,
         displayName: _displayNameController.text,
@@ -115,17 +110,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         profileVisible: _profileVisible,
       );
 
+      if (!mounted) return;
+
       setState(() {
         _message = 'Perfil guardado correctamente.';
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _message = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
       if (mounted) {
         setState(() {
-          _isSaving = false;
+          _isLoading = false;
         });
       }
     }
@@ -141,36 +140,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(title: const Text('Mi perfil')),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
+          constraints: const BoxConstraints(maxWidth: 560),
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
+                const _PrivacyNotice(),
+                const SizedBox(height: 16),
                 TextField(
                   controller: _displayNameController,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Nombre visible',
+                    helperText:
+                        'Este nombre sí aparecerá en tu perfil público.',
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 TextField(
                   controller: _comunaController,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Comuna',
                     hintText: 'Ej: Santiago, Maipú, Providencia',
+                    helperText: 'No escribas dirección exacta.',
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 DropdownButtonFormField<String>(
                   initialValue: _contactType,
                   decoration: const InputDecoration(
-                    labelText: 'Tipo de contacto',
+                    labelText: 'Tipo de contacto privado',
                     border: OutlineInputBorder(),
                   ),
                   items: const [
@@ -189,30 +191,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                   onChanged: (value) {
                     if (value == null) return;
+
                     setState(() {
                       _contactType = value;
                     });
                   },
                 ),
-
                 const SizedBox(height: 12),
-
                 TextField(
                   controller: _contactValueController,
+                  textInputAction: TextInputAction.done,
                   decoration: const InputDecoration(
                     labelText: 'Contacto privado',
                     hintText: 'Ej: +56912345678 o @usuario',
+                    helperText:
+                        'Solo se mostrará cuando otro usuario desbloquee tu perfil.',
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 SwitchListTile(
                   value: _profileVisible,
                   title: const Text('Perfil visible'),
                   subtitle: const Text(
-                    'Si lo apagas, no deberías aparecer en resultados de matching.',
+                    'Si está apagado, no deberías aparecer en el matching.',
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -220,12 +222,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     });
                   },
                 ),
-
                 SwitchListTile(
                   value: _contactVisible,
                   title: const Text('Permitir mostrar contacto al desbloquear'),
                   subtitle: const Text(
-                    'El contacto nunca queda público directamente.',
+                    'Tu contacto no queda público directamente.',
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -233,15 +234,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     });
                   },
                 ),
-
                 const SizedBox(height: 16),
-
                 if (_message != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Text(_message!, textAlign: TextAlign.center),
                   ),
-
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
@@ -258,6 +256,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PrivacyNotice extends StatelessWidget {
+  const _PrivacyNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.privacy_tip_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Para el MVP solo usaremos comuna aproximada. '
+                'No guardes dirección exacta. Tu contacto real se guarda privado '
+                'y no aparece en el perfil público.',
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -11,6 +11,33 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function publicProfileHasOnlyAllowedFields() {
+      return request.resource.data.keys().hasOnly([
+        'displayName',
+        'comuna',
+        'comunaKey',
+        'countryCode',
+        'locationPrecision',
+        'missingIds',
+        'duplicateIds',
+        'lastActiveAt',
+        'profileVisible'
+      ]);
+    }
+
+    function publicProfileHasNoPrivateContact() {
+      return !request.resource.data.keys().hasAny([
+        'email',
+        'contactType',
+        'contactValue',
+        'contactVisible',
+        'phone',
+        'telefono',
+        'whatsapp',
+        'instagram'
+      ]);
+    }
+
     match /users/{uid} {
       allow create: if isOwner(uid);
       allow read: if isOwner(uid);
@@ -24,8 +51,11 @@ service cloud.firestore {
 
     match /publicProfiles/{uid} {
       allow read: if signedIn();
-      allow create: if isOwner(uid);
-      allow update: if isOwner(uid);
+
+      allow create, update: if isOwner(uid)
+        && publicProfileHasOnlyAllowedFields()
+        && publicProfileHasNoPrivateContact();
+
       allow delete: if false;
     }
   }

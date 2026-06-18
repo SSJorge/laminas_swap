@@ -23,17 +23,25 @@ class UserRepository {
 
     final userDoc = await userRef.get();
 
+    final batch = _db.batch();
+
     if (!userDoc.exists) {
-      await userRef.set({
+      batch.set(userRef, {
         'displayName': cleanName,
         'email': user.email,
         'contactType': 'whatsapp',
         'contactValue': '',
         'contactVisible': true,
-        'profileVisible': true,
+        'profileVisible': false,
         'createdAt': now,
         'lastActiveAt': now,
-        'location': {'comuna': ''},
+        'updatedAt': now,
+        'location': {
+          'comuna': '',
+          'comunaKey': '',
+          'countryCode': 'CL',
+          'precision': 'comuna',
+        },
         'stats': {
           'unlockedToday': 0,
           'totalCards': 0,
@@ -43,26 +51,32 @@ class UserRepository {
         },
       });
     } else {
-      await userRef.update({'lastActiveAt': now});
+      batch.set(userRef, {'lastActiveAt': now}, SetOptions(merge: true));
     }
 
-    final publicDoc = await publicProfileRef.get();
+    batch.set(publicProfileRef, {
+      'displayName': cleanName,
+      'comuna': '',
+      'comunaKey': '',
+      'countryCode': 'CL',
+      'locationPrecision': 'comuna',
+      'missingIds': [],
+      'duplicateIds': [],
+      'lastActiveAt': now,
+      'profileVisible': false,
 
-    if (!publicDoc.exists) {
-      await publicProfileRef.set({
-        'displayName': cleanName,
-        'comuna': '',
-        'missingIds': [],
-        'duplicateIds': [],
-        'lastActiveAt': now,
-        'profileVisible': true,
-      });
-    } else {
-      await publicProfileRef.set({
-        'lastActiveAt': now,
-        'duplicateCounts': FieldValue.delete(),
-      }, SetOptions(merge: true));
-    }
+      // Limpieza preventiva por si alguna versión vieja escribió campos indebidos.
+      'contactType': FieldValue.delete(),
+      'contactValue': FieldValue.delete(),
+      'contactVisible': FieldValue.delete(),
+      'email': FieldValue.delete(),
+      'phone': FieldValue.delete(),
+      'whatsapp': FieldValue.delete(),
+      'instagram': FieldValue.delete(),
+      'duplicateCounts': FieldValue.delete(),
+    }, SetOptions(merge: true));
+
+    await batch.commit();
   }
 
   Future<void> updateProfile({
@@ -74,42 +88,76 @@ class UserRepository {
     required bool contactVisible,
     required bool profileVisible,
   }) async {
-    final now = FieldValue.serverTimestamp();
-
     final cleanName = displayName.trim().isEmpty
         ? 'Usuario'
         : displayName.trim();
 
     final cleanComuna = comuna.trim();
+    final cleanComunaKey = _normalizeComuna(cleanComuna);
+    final cleanContactType = _normalizeContactType(contactType);
+    final cleanContactValue = contactValue.trim();
+
+    if (cleanName.isEmpty) {
+      throw Exception('El nombre visible es obligatorio.');
+    }
+
+    if (cleanComuna.isEmpty) {
+      throw Exception('La comuna es obligatoria.');
+    }
+
+    if (profileVisible && cleanContactValue.isEmpty) {
+      throw Exception(
+        'Si tu perfil está visible, agrega una forma de contacto.',
+      );
+    }
+
+    final now = FieldValue.serverTimestamp();
 
     await user.updateDisplayName(cleanName);
 
-    await _db.collection('users').doc(user.uid).set({
+    final userRef = _db.collection('users').doc(user.uid);
+    final publicProfileRef = _db.collection('publicProfiles').doc(user.uid);
+
+    final batch = _db.batch();
+
+    batch.set(userRef, {
       'displayName': cleanName,
       'email': user.email,
-      'contactType': contactType,
-      'contactValue': contactValue.trim(),
+      'contactType': cleanContactType,
+      'contactValue': cleanContactValue,
       'contactVisible': contactVisible,
       'profileVisible': profileVisible,
-      'location': {'comuna': cleanComuna},
+      'location': {
+        'comuna': cleanComuna,
+        'comunaKey': cleanComunaKey,
+        'countryCode': 'CL',
+        'precision': 'comuna',
+      },
       'lastActiveAt': now,
       'updatedAt': now,
     }, SetOptions(merge: true));
 
-    await _db.collection('publicProfiles').doc(user.uid).set({
+    batch.set(publicProfileRef, {
       'displayName': cleanName,
       'comuna': cleanComuna,
+      'comunaKey': cleanComunaKey,
+      'countryCode': 'CL',
+      'locationPrecision': 'comuna',
       'lastActiveAt': now,
       'profileVisible': profileVisible,
 
-      // Limpieza del modelo anterior.
-      // Ya no guardamos cantidades de repetidas.
-      'duplicateCounts': FieldValue.delete(),
-
-      // Importante:
-      // No tocar missingIds ni duplicateIds aquí.
-      // Esos campos los actualiza CardRepository.
+      // Seguridad por diseño:
+      // publicProfiles nunca debe contener contacto real.
+      'contactType': FieldValue.delete(),
+      'contactValue': FieldValue.delete(),
+      'contactVisible': FieldValue.delete(),
+      'email': FieldValue.delete(),
+      'phone': FieldValue.delete(),
+      'whatsapp': FieldValue.delete(),
+      'instagram': FieldValue.delete(),
     }, SetOptions(merge: true));
+
+    await batch.commit();
   }
 
   String _resolveDisplayName({
@@ -130,5 +178,31 @@ class UserRepository {
     }
 
     return 'Usuario';
+  }
+
+  String _normalizeContactType(String value) {
+    final cleanValue = value.trim().toLowerCase();
+
+    switch (cleanValue) {
+      case 'whatsapp':
+      case 'instagram':
+      case 'telefono':
+        return cleanValue;
+      default:
+        return 'whatsapp';
+    }
+  }
+
+  String _normalizeComuna(String value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ñ', 'n')
+        .replaceAll(RegExp(r'\s+'), ' ');
   }
 }
