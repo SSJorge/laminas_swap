@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'cards_screen.dart';
+import 'matching_screen.dart';
 import 'profile_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -32,8 +33,7 @@ class HomeScreen extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 720),
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: ListView(
               children: [
                 Text(
                   'Hola, $displayName',
@@ -41,7 +41,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Registra tus láminas y prepara tu perfil para encontrar intercambios.',
+                  'Registra tus láminas, configura tu perfil y encuentra intercambios cercanos.',
                 ),
                 const SizedBox(height: 24),
                 Card(
@@ -78,11 +78,21 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Card(
+                Card(
                   child: ListTile(
-                    leading: Icon(Icons.people),
-                    title: Text('Matching'),
-                    subtitle: Text('Esto se construye después.'),
+                    leading: const Icon(Icons.people),
+                    title: const Text('Matching'),
+                    subtitle: const Text(
+                      'Encuentra personas de tu comuna con láminas compatibles.',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const MatchingScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
