@@ -7,6 +7,8 @@ import 'profile_screen.dart';
 
 import 'confirmed_matches_screen.dart';
 import 'received_likes_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'user_search_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -18,7 +20,6 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final displayName = user?.displayName ?? 'Usuario';
 
     return Scaffold(
       appBar: AppBar(
@@ -38,10 +39,28 @@ class HomeScreen extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: ListView(
               children: [
-                Text(
-                  'Hola, $displayName',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
+                if (user != null)
+                  StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      final data = snapshot.data?.data();
+                      final displayName =
+                          data?['displayName'] ?? user.displayName ?? 'Usuario';
+
+                      return Text(
+                        'Hola, $displayName',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      );
+                    },
+                  )
+                else
+                  Text(
+                    'Hola',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
                 const SizedBox(height: 8),
                 const Text(
                   'Registra tus láminas, configura tu perfil y encuentra intercambios cercanos.',
@@ -129,6 +148,24 @@ class HomeScreen extends StatelessWidget {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const ConfirmedMatchesScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.person_search),
+                    title: const Text('Buscar usuario'),
+                    subtitle: const Text(
+                      'Busca a alguien por su nombre de usuario exacto.',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const UserSearchScreen(),
                         ),
                       );
                     },

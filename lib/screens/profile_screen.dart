@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../data/chile_locations.dart';
 import '../data/profile_constants.dart';
 import '../services/user_repository.dart';
+import '../utils/display_name_utils.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -132,10 +133,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final region = _selectedRegion;
+      final cleanName = validateDisplayName(_displayNameController.text);
 
       await _userRepository.updateProfile(
         user: user,
-        displayName: _displayNameController.text,
+        displayName: cleanName,
         regionId: region.id,
         region: region.name,
         comuna: _selectedComuna,
@@ -237,9 +239,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: _displayNameController,
+                  maxLength: displayNameMaxLength,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9._]')),
+                  ],
                   textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
-                    labelText: 'Nombre visible',
+                    labelText: 'Nombre de usuario',
+                    helperText: 'Debe ser único. Máximo 15 caracteres.',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -356,7 +363,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     labelText: 'Descripción',
                     hintText:
                         'Ej: cambio Messi repetido por 30 fichas que me falten, mi insta es @mi.insta',
-                    helperText: 'Solo se mostrará después de un match mutuo.',
+                    helperText: 'Solo visible después de un match mutuo.',
                     border: OutlineInputBorder(),
                   ),
                 ),

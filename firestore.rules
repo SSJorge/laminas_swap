@@ -23,6 +23,7 @@ service cloud.firestore {
     function publicProfileHasOnlyAllowedFields() {
       return request.resource.data.keys().hasOnly([
         'displayName',
+        'displayNameKey',
         'regionId',
         'region',
         'regionKey',
@@ -78,6 +79,24 @@ service cloud.firestore {
       && request.resource.data.contactVisible is bool;
     }
 
+    function usernameHasOnlyAllowedFields() {
+      return request.resource.data.keys().hasOnly([
+        'uid',
+        'displayName',
+        'displayNameKey',
+        'createdAt',
+        'updatedAt'
+      ]);
+    }
+
+    function usernameIsValid(usernameKey) {
+      return request.resource.data.uid == request.auth.uid
+        && request.resource.data.displayNameKey == usernameKey
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.displayName.size() <= 15;
+    }
+
     function actionHasOnlyAllowedFields() {
       return request.resource.data.keys().hasOnly([
         'fromUid',
@@ -117,6 +136,23 @@ service cloud.firestore {
 
         allow delete: if isOwner(uid);
       }
+    }
+
+    match /usernames/{usernameKey} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && !exists(/databases/$(database)/documents/usernames/$(usernameKey))
+        && usernameHasOnlyAllowedFields()
+        && usernameIsValid(usernameKey);
+
+      allow update: if signedIn()
+        && resource.data.uid == request.auth.uid
+        && usernameHasOnlyAllowedFields()
+        && usernameIsValid(usernameKey);
+
+      allow delete: if signedIn()
+        && resource.data.uid == request.auth.uid;
     }
 
     match /publicProfiles/{uid} {

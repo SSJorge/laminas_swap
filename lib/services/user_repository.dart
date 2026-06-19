@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../data/profile_constants.dart';
+import '../utils/display_name_utils.dart';
 
 class UserRepository {
   UserRepository(this._db);
@@ -12,30 +13,48 @@ class UserRepository {
     required User user,
     String? displayName,
   }) async {
-    final now = FieldValue.serverTimestamp();
-    final privateProfileRef = _db.collection('privateProfiles').doc(user.uid);
-
-    final cleanName = _resolveDisplayName(
-      displayName: displayName,
-      firebaseDisplayName: user.displayName,
-      email: user.email,
-    );
-
     final userRef = _db.collection('users').doc(user.uid);
-    final publicProfileRef = _db.collection('publicProfiles').doc(user.uid);
-
     final userDoc = await userRef.get();
 
-    final batch = _db.batch();
+    if (userDoc.exists) {
+      await userRef.set({
+        'lastActiveAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      return;
+    }
 
-    if (!userDoc.exists) {
-      batch.set(userRef, {
+    final cleanName = validateDisplayName(
+      displayName ?? user.displayName ?? '',
+    );
+    final cleanNameKey = displayNameKeyFrom(cleanName);
+    final now = FieldValue.serverTimestamp();
+
+    final usernameRef = _db.collection('usernames').doc(cleanNameKey);
+    final publicProfileRef = _db.collection('publicProfiles').doc(user.uid);
+    final privateProfileRef = _db.collection('privateProfiles').doc(user.uid);
+
+    await _db.runTransaction((transaction) async {
+      final usernameDoc = await transaction.get(usernameRef);
+
+      if (usernameDoc.exists) {
+        throw Exception('Ese nombre de usuario ya está ocupado.');
+      }
+
+      transaction.set(usernameRef, {
+        'uid': user.uid,
         'displayName': cleanName,
+        'displayNameKey': cleanNameKey,
+        'createdAt': now,
+        'updatedAt': now,
+      });
+
+      transaction.set(userRef, {
+        'displayName': cleanName,
+        'displayNameKey': cleanNameKey,
         'email': user.email,
         'contactType': contactTypeEmail,
         'contactValue': user.email ?? '',
         'contactVisible': false,
-        'description': '',
         'profileVisible': true,
         'createdAt': now,
         'lastActiveAt': now,
@@ -57,49 +76,33 @@ class UserRepository {
           'duplicateCount': 0,
         },
       });
-    } else {
-      batch.set(userRef, {'lastActiveAt': now}, SetOptions(merge: true));
-    }
 
-    batch.set(publicProfileRef, {
-      'displayName': cleanName,
-      'regionId': 'valparaiso',
-      'region': 'Valparaíso',
-      'regionKey': 'valparaiso',
-      'comuna': 'Quilpué',
-      'comunaKey': 'quilpue',
-      'countryCode': 'CL',
-      'locationPrecision': 'comuna',
-      'description': '',
-      'contactVisible': false,
-      'missingIds': [],
-      'duplicateIds': [],
-      'lastActiveAt': now,
-      'profileVisible': true,
+      transaction.set(publicProfileRef, {
+        'displayName': cleanName,
+        'displayNameKey': cleanNameKey,
+        'regionId': 'valparaiso',
+        'region': 'Valparaíso',
+        'regionKey': 'valparaiso',
+        'comuna': 'Quilpué',
+        'comunaKey': 'quilpue',
+        'countryCode': 'CL',
+        'locationPrecision': 'comuna',
+        'missingIds': [],
+        'duplicateIds': [],
+        'lastActiveAt': now,
+        'profileVisible': true,
+      });
 
-      'publicContactType': FieldValue.delete(),
-      'publicContactValue': FieldValue.delete(),
-
-      // Limpieza de campos antiguos o privados.
-      'contactType': FieldValue.delete(),
-      'contactValue': FieldValue.delete(),
-      'email': FieldValue.delete(),
-      'phone': FieldValue.delete(),
-      'telefono': FieldValue.delete(),
-      'whatsapp': FieldValue.delete(),
-      'instagram': FieldValue.delete(),
-      'duplicateCounts': FieldValue.delete(),
-    }, SetOptions(merge: true));
-
-    batch.set(privateProfileRef, {
-      'description': '',
-      'contactType': contactTypeEmail,
-      'contactValue': user.email ?? '',
-      'contactVisible': false,
-      'updatedAt': now,
+      transaction.set(privateProfileRef, {
+        'description': '',
+        'contactType': contactTypeEmail,
+        'contactValue': user.email ?? '',
+        'contactVisible': false,
+        'updatedAt': now,
+      });
     });
 
-    await batch.commit();
+    await user.updateDisplayName(cleanName);
   }
 
   Future<void> updateProfile({
@@ -114,9 +117,8 @@ class UserRepository {
     required bool profileVisible,
     required String description,
   }) async {
-    final cleanName = displayName.trim().isEmpty
-        ? 'Usuario'
-        : displayName.trim();
+    final cleanName = validateDisplayName(displayName);
+    final cleanNameKey = displayNameKeyFrom(cleanName);
 
     final cleanRegionId = regionId.trim();
     final cleanRegion = region.trim();
@@ -132,12 +134,6 @@ class UserRepository {
       );
     }
 
-    final effectiveContactValue = _resolveContactValue(
-      user: user,
-      contactType: cleanContactType,
-      contactValue: contactValue,
-    );
-
     if (cleanRegionId.isEmpty || cleanRegion.isEmpty) {
       throw Exception('La región es obligatoria.');
     }
@@ -146,92 +142,106 @@ class UserRepository {
       throw Exception('La comuna es obligatoria.');
     }
 
-    final now = FieldValue.serverTimestamp();
+    final effectiveContactValue = _resolveContactValue(
+      user: user,
+      contactType: cleanContactType,
+      contactValue: contactValue,
+    );
 
-    await user.updateDisplayName(cleanName);
+    final now = FieldValue.serverTimestamp();
 
     final userRef = _db.collection('users').doc(user.uid);
     final publicProfileRef = _db.collection('publicProfiles').doc(user.uid);
+    final privateProfileRef = _db.collection('privateProfiles').doc(user.uid);
+    final newUsernameRef = _db.collection('usernames').doc(cleanNameKey);
 
-    final batch = _db.batch();
+    await _db.runTransaction((transaction) async {
+      final userDoc = await transaction.get(userRef);
+      final newUsernameDoc = await transaction.get(newUsernameRef);
 
-    batch.set(userRef, {
-      'displayName': cleanName,
-      'email': user.email,
-      'contactType': cleanContactType,
-      'contactValue': effectiveContactValue,
-      'contactVisible': contactVisible,
-      'description': cleanDescription,
-      'profileVisible': profileVisible,
-      'location': {
+      final userData = userDoc.data() ?? <String, dynamic>{};
+      final oldNameKey = userData['displayNameKey'] as String?;
+
+      if (newUsernameDoc.exists) {
+        final ownerUid = newUsernameDoc.data()?['uid'];
+
+        if (ownerUid != user.uid) {
+          throw Exception('Ese nombre de usuario ya está ocupado.');
+        }
+      }
+
+      if (oldNameKey != null &&
+          oldNameKey.isNotEmpty &&
+          oldNameKey != cleanNameKey) {
+        final oldUsernameRef = _db.collection('usernames').doc(oldNameKey);
+        transaction.delete(oldUsernameRef);
+      }
+
+      transaction.set(newUsernameRef, {
+        'uid': user.uid,
+        'displayName': cleanName,
+        'displayNameKey': cleanNameKey,
+        'updatedAt': now,
+      }, SetOptions(merge: true));
+
+      transaction.set(userRef, {
+        'displayName': cleanName,
+        'displayNameKey': cleanNameKey,
+        'email': user.email,
+        'contactType': cleanContactType,
+        'contactValue': effectiveContactValue,
+        'contactVisible': contactVisible,
+        'profileVisible': profileVisible,
+        'location': {
+          'regionId': cleanRegionId,
+          'region': cleanRegion,
+          'regionKey': cleanRegionKey,
+          'comuna': cleanComuna,
+          'comunaKey': cleanComunaKey,
+          'countryCode': 'CL',
+          'precision': 'comuna',
+        },
+        'lastActiveAt': now,
+        'updatedAt': now,
+      }, SetOptions(merge: true));
+
+      transaction.set(publicProfileRef, {
+        'displayName': cleanName,
+        'displayNameKey': cleanNameKey,
         'regionId': cleanRegionId,
         'region': cleanRegion,
         'regionKey': cleanRegionKey,
         'comuna': cleanComuna,
         'comunaKey': cleanComunaKey,
         'countryCode': 'CL',
-        'precision': 'comuna',
-      },
-      'lastActiveAt': now,
-      'updatedAt': now,
-    }, SetOptions(merge: true));
+        'locationPrecision': 'comuna',
+        'lastActiveAt': now,
+        'profileVisible': profileVisible,
 
-    batch.set(publicProfileRef, {
-      'displayName': cleanName,
-      'regionId': cleanRegionId,
-      'region': cleanRegion,
-      'regionKey': cleanRegionKey,
-      'comuna': cleanComuna,
-      'comunaKey': cleanComunaKey,
-      'countryCode': 'CL',
-      'locationPrecision': 'comuna',
-      'lastActiveAt': now,
-      'profileVisible': profileVisible,
+        // Limpieza: nada privado ni descripción en publicProfiles.
+        'description': FieldValue.delete(),
+        'contactVisible': FieldValue.delete(),
+        'publicContactType': FieldValue.delete(),
+        'publicContactValue': FieldValue.delete(),
+        'contactType': FieldValue.delete(),
+        'contactValue': FieldValue.delete(),
+        'email': FieldValue.delete(),
+        'phone': FieldValue.delete(),
+        'telefono': FieldValue.delete(),
+        'whatsapp': FieldValue.delete(),
+        'instagram': FieldValue.delete(),
+      }, SetOptions(merge: true));
 
-      // Estos campos NO pueden ser públicos.
-      'description': FieldValue.delete(),
-      'contactVisible': FieldValue.delete(),
-      'publicContactType': FieldValue.delete(),
-      'publicContactValue': FieldValue.delete(),
-      'contactType': FieldValue.delete(),
-      'contactValue': FieldValue.delete(),
-      'email': FieldValue.delete(),
-      'phone': FieldValue.delete(),
-      'telefono': FieldValue.delete(),
-      'whatsapp': FieldValue.delete(),
-      'instagram': FieldValue.delete(),
-    }, SetOptions(merge: true));
-    final privateProfileRef = _db.collection('privateProfiles').doc(user.uid);
+      transaction.set(privateProfileRef, {
+        'description': cleanDescription,
+        'contactType': cleanContactType,
+        'contactValue': effectiveContactValue,
+        'contactVisible': contactVisible,
+        'updatedAt': now,
+      }, SetOptions(merge: true));
+    });
 
-    batch.set(privateProfileRef, {
-      'description': cleanDescription,
-      'contactType': cleanContactType,
-      'contactValue': effectiveContactValue,
-      'contactVisible': contactVisible,
-      'updatedAt': now,
-    }, SetOptions(merge: true));
-
-    await batch.commit();
-  }
-
-  String _resolveDisplayName({
-    required String? displayName,
-    required String? firebaseDisplayName,
-    required String? email,
-  }) {
-    if (displayName != null && displayName.trim().isNotEmpty) {
-      return displayName.trim();
-    }
-
-    if (firebaseDisplayName != null && firebaseDisplayName.trim().isNotEmpty) {
-      return firebaseDisplayName.trim();
-    }
-
-    if (email != null && email.contains('@')) {
-      return email.split('@').first;
-    }
-
-    return 'Usuario';
+    await user.updateDisplayName(cleanName);
   }
 
   String _normalizeContactType(String value) {
@@ -262,7 +272,6 @@ class UserRepository {
     }
 
     final digits = contactValue.replaceAll(RegExp(r'\D'), '');
-
     var localDigits = digits;
 
     if (digits.startsWith('569') && digits.length == 11) {

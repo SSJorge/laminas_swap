@@ -1,3 +1,4 @@
+const int displayNameMaxLength = 15;
 const int profileDescriptionMaxLength = 200;
 
 const String contactTypeEmail = 'email';
