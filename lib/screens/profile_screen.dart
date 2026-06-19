@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/chile_locations.dart';
+import '../data/profile_constants.dart';
 import '../services/user_repository.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -14,13 +16,14 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _displayNameController = TextEditingController();
-  final _contactValueController = TextEditingController();
+  final _phoneDigitsController = TextEditingController();
+  final _descriptionController = TextEditingController();
 
   String _selectedRegionId = 'valparaiso';
   String _selectedComuna = 'Quilpué';
-  String _contactType = 'email';
+  String _contactType = contactTypeEmail;
 
-  bool _contactVisible = true;
+  bool _contactVisible = false;
   bool _profileVisible = true;
   bool _isLoading = true;
   bool _isSaving = false;
@@ -43,7 +46,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     _displayNameController.dispose();
-    _contactValueController.dispose();
+    _phoneDigitsController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -62,15 +66,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _displayNameController.text = user.displayName ?? '';
         _selectedRegionId = 'valparaiso';
         _selectedComuna = 'Quilpué';
-        _contactType = 'email';
+        _contactType = contactTypeEmail;
+        _contactVisible = false;
+        _profileVisible = true;
+        _descriptionController.text = '';
         return;
       }
 
       _displayNameController.text = data['displayName'] ?? '';
       _contactType = _safeContactType(data['contactType']);
-      _contactValueController.text = data['contactValue'] ?? '';
-      _contactVisible = data['contactVisible'] ?? true;
+      _contactVisible = data['contactVisible'] == true;
       _profileVisible = data['profileVisible'] ?? true;
+      _descriptionController.text = data['description'] ?? '';
+
+      final contactValue = data['contactValue'];
+
+      if (_contactType == contactTypePhone && contactValue is String) {
+        _phoneDigitsController.text = _extractPhoneDigits(contactValue);
+      } else {
+        _phoneDigitsController.clear();
+      }
 
       final location = data['location'];
 
@@ -95,11 +110,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _message = 'Error cargando perfil: ${e.toString()}';
       });
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -125,9 +140,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         region: region.name,
         comuna: _selectedComuna,
         contactType: _contactType,
-        contactValue: _contactValueController.text,
+        contactValue: _contactType == contactTypePhone
+            ? _phoneDigitsController.text
+            : user.email ?? '',
         contactVisible: _contactVisible,
         profileVisible: _profileVisible,
+        description: _descriptionController.text,
       );
 
       if (!mounted) return;
@@ -142,20 +160,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _message = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        _isSaving = false;
+      });
     }
   }
 
   String _safeContactType(dynamic value) {
-    if (value == 'email' || value == 'whatsapp' || value == 'instagram') {
+    if (value == contactTypeEmail || value == contactTypePhone) {
       return value;
     }
 
-    return 'email';
+    return contactTypeEmail;
   }
 
   String _safeRegionId(dynamic value) {
@@ -178,6 +196,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return region.comunas.first;
+  }
+
+  String _extractPhoneDigits(String value) {
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+
+    if (digits.startsWith('569') && digits.length == 11) {
+      return digits.substring(3);
+    }
+
+    if (digits.startsWith('9') && digits.length == 9) {
+      return digits.substring(1);
+    }
+
+    if (digits.length <= chilePhoneLocalDigitsLength) {
+      return digits;
+    }
+
+    return '';
   }
 
   @override
@@ -267,16 +303,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   items: const [
                     DropdownMenuItem(
-                      value: 'email',
+                      value: contactTypeEmail,
                       child: Text('Correo electrónico'),
                     ),
                     DropdownMenuItem(
-                      value: 'whatsapp',
-                      child: Text('WhatsApp'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'instagram',
-                      child: Text('Instagram'),
+                      value: contactTypePhone,
+                      child: Text('Número de teléfono'),
                     ),
                   ],
                   onChanged: (value) {
@@ -288,34 +320,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
-                if (_contactType == 'email')
-                  TextField(
+                if (_contactType == contactTypeEmail)
+                  TextFormField(
+                    initialValue: userEmail,
                     enabled: false,
-                    controller: TextEditingController(text: userEmail),
                     decoration: const InputDecoration(
                       labelText: 'Correo electrónico',
-                      helperText:
-                          'Se usará el email de tu cuenta. No queda público hasta desbloqueo.',
+                      helperText: 'Se usará el correo de tu cuenta.',
                       border: OutlineInputBorder(),
                     ),
                   )
                 else
                   TextField(
-                    controller: _contactValueController,
-                    textInputAction: TextInputAction.done,
-                    decoration: InputDecoration(
-                      labelText: _contactType == 'whatsapp'
-                          ? 'WhatsApp'
-                          : 'Instagram',
-                      hintText: _contactType == 'whatsapp'
-                          ? 'Ej: +56912345678'
-                          : 'Ej: @usuario',
-                      helperText:
-                          'Solo se mostrará cuando otro usuario desbloquee tu perfil.',
-                      border: const OutlineInputBorder(),
+                    controller: _phoneDigitsController,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(
+                        chilePhoneLocalDigitsLength,
+                      ),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'Número',
+                      prefixText: '$chilePhonePrefix ',
+                      helperText: 'Escribe solo los 8 dígitos restantes.',
+                      border: OutlineInputBorder(),
                     ),
                   ),
                 const SizedBox(height: 12),
+                TextField(
+                  controller: _descriptionController,
+                  maxLength: profileDescriptionMaxLength,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Descripción',
+                    hintText:
+                        'Ej: cambio Messi repetido por 30 fichas que me falten',
+                    helperText:
+                        'Visible en tus resultados de matching. Puede quedar vacía.',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  value: _contactVisible,
+                  title: const Text('Contacto público en matches'),
+                  subtitle: const Text(
+                    'Si lo apagas, tu contacto quedará privado hasta desbloqueo.',
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _contactVisible = value;
+                    });
+                  },
+                ),
                 SwitchListTile(
                   value: _profileVisible,
                   title: const Text('Perfil visible'),
@@ -325,18 +383,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onChanged: (value) {
                     setState(() {
                       _profileVisible = value;
-                    });
-                  },
-                ),
-                SwitchListTile(
-                  value: _contactVisible,
-                  title: const Text('Permitir mostrar contacto al desbloquear'),
-                  subtitle: const Text(
-                    'Tu contacto nunca queda público directamente.',
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _contactVisible = value;
                     });
                   },
                 ),
@@ -387,8 +433,8 @@ class _PrivacyNotice extends StatelessWidget {
             const Expanded(
               child: Text(
                 'Usaremos solo región y comuna aproximada. '
-                'No guardes dirección exacta. Tu contacto real se guarda privado '
-                'y no aparece en tu perfil público.',
+                'No guardes dirección exacta. Tu contacto real se guarda privado. '
+                'La descripción será visible para tus matches.',
               ),
             ),
           ],

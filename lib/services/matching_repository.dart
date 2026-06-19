@@ -47,7 +47,6 @@ class MatchingRepository {
       }
 
       final data = doc.data();
-
       final otherComunaKey = _effectiveComunaKey(data);
 
       if (otherComunaKey.isEmpty || otherComunaKey != myComunaKey) {
@@ -58,10 +57,7 @@ class MatchingRepository {
       final otherDuplicateIds = _readStringSet(data['duplicateIds']);
 
       final iCanGiveIds = myDuplicateIds.intersection(otherMissingIds).toList();
-
-      final theyCanGiveIds = otherDuplicateIds
-          .intersection(myMissingIds)
-          .toList();
+      final theyCanGiveIds = otherDuplicateIds.intersection(myMissingIds).toList();
 
       if (iCanGiveIds.isEmpty && theyCanGiveIds.isEmpty) {
         continue;
@@ -74,6 +70,10 @@ class MatchingRepository {
               ? 'Usuario'
               : _readString(data['displayName']),
           comuna: _readString(data['comuna']),
+          description: _readString(data['description']),
+          contactVisible: data['contactVisible'] == true,
+          publicContactType: _readString(data['publicContactType']),
+          publicContactValue: _readString(data['publicContactValue']),
           iCanGiveIds: iCanGiveIds,
           theyCanGiveIds: theyCanGiveIds,
           lastActiveAt: _readDateTime(data['lastActiveAt']),
@@ -87,9 +87,8 @@ class MatchingRepository {
   }
 
   int _compareMatches(MatchCandidate a, MatchCandidate b) {
-    final byTwoWay = _boolAsInt(
-      b.hasTwoWayMatch,
-    ).compareTo(_boolAsInt(a.hasTwoWayMatch));
+    final byTwoWay =
+        _boolAsInt(b.hasTwoWayMatch).compareTo(_boolAsInt(a.hasTwoWayMatch));
 
     if (byTwoWay != 0) {
       return byTwoWay;

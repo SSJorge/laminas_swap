@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../data/profile_constants.dart';
+
 class UserRepository {
   UserRepository(this._db);
 
@@ -29,9 +31,10 @@ class UserRepository {
       batch.set(userRef, {
         'displayName': cleanName,
         'email': user.email,
-        'contactType': 'email',
+        'contactType': contactTypeEmail,
         'contactValue': user.email ?? '',
-        'contactVisible': true,
+        'contactVisible': false,
+        'description': '',
         'profileVisible': true,
         'createdAt': now,
         'lastActiveAt': now,
@@ -66,14 +69,19 @@ class UserRepository {
       'comunaKey': 'quilpue',
       'countryCode': 'CL',
       'locationPrecision': 'comuna',
+      'description': '',
+      'contactVisible': false,
       'missingIds': [],
       'duplicateIds': [],
       'lastActiveAt': now,
       'profileVisible': true,
 
+      'publicContactType': FieldValue.delete(),
+      'publicContactValue': FieldValue.delete(),
+
+      // Limpieza de campos antiguos o privados.
       'contactType': FieldValue.delete(),
       'contactValue': FieldValue.delete(),
-      'contactVisible': FieldValue.delete(),
       'email': FieldValue.delete(),
       'phone': FieldValue.delete(),
       'telefono': FieldValue.delete(),
@@ -95,6 +103,7 @@ class UserRepository {
     required String contactValue,
     required bool contactVisible,
     required bool profileVisible,
+    required String description,
   }) async {
     final cleanName = displayName.trim().isEmpty
         ? 'Usuario'
@@ -106,6 +115,13 @@ class UserRepository {
     final cleanComuna = comuna.trim();
     final cleanComunaKey = _normalizeLocation(cleanComuna);
     final cleanContactType = _normalizeContactType(contactType);
+    final cleanDescription = description.trim();
+
+    if (cleanDescription.length > profileDescriptionMaxLength) {
+      throw Exception(
+        'La descripción no puede superar $profileDescriptionMaxLength caracteres.',
+      );
+    }
 
     final effectiveContactValue = _resolveContactValue(
       user: user,
@@ -136,6 +152,7 @@ class UserRepository {
       'contactType': cleanContactType,
       'contactValue': effectiveContactValue,
       'contactVisible': contactVisible,
+      'description': cleanDescription,
       'profileVisible': profileVisible,
       'location': {
         'regionId': cleanRegionId,
@@ -159,13 +176,22 @@ class UserRepository {
       'comunaKey': cleanComunaKey,
       'countryCode': 'CL',
       'locationPrecision': 'comuna',
+      'description': cleanDescription,
+      'contactVisible': contactVisible,
       'lastActiveAt': now,
       'profileVisible': profileVisible,
 
-      // Nunca exponer contacto real en publicProfiles.
+      if (contactVisible) ...{
+        'publicContactType': cleanContactType,
+        'publicContactValue': effectiveContactValue,
+      } else ...{
+        'publicContactType': FieldValue.delete(),
+        'publicContactValue': FieldValue.delete(),
+      },
+
+      // Nunca exponer estos nombres privados/antiguos en publicProfiles.
       'contactType': FieldValue.delete(),
       'contactValue': FieldValue.delete(),
-      'contactVisible': FieldValue.delete(),
       'email': FieldValue.delete(),
       'phone': FieldValue.delete(),
       'telefono': FieldValue.delete(),
@@ -200,12 +226,11 @@ class UserRepository {
     final cleanValue = value.trim().toLowerCase();
 
     switch (cleanValue) {
-      case 'email':
-      case 'whatsapp':
-      case 'instagram':
+      case contactTypeEmail:
+      case contactTypePhone:
         return cleanValue;
       default:
-        return 'email';
+        return contactTypeEmail;
     }
   }
 
@@ -214,7 +239,7 @@ class UserRepository {
     required String contactType,
     required String contactValue,
   }) {
-    if (contactType == 'email') {
+    if (contactType == contactTypeEmail) {
       final email = user.email?.trim() ?? '';
 
       if (email.isEmpty) {
@@ -224,21 +249,25 @@ class UserRepository {
       return email;
     }
 
-    final cleanValue = contactValue.trim();
+    final digits = contactValue.replaceAll(RegExp(r'\D'), '');
 
-    if (cleanValue.isEmpty) {
-      if (contactType == 'whatsapp') {
-        throw Exception('Escribe tu WhatsApp.');
-      }
+    var localDigits = digits;
 
-      if (contactType == 'instagram') {
-        throw Exception('Escribe tu Instagram.');
-      }
-
-      throw Exception('Escribe una forma de contacto.');
+    if (digits.startsWith('569') && digits.length == 11) {
+      localDigits = digits.substring(3);
     }
 
-    return cleanValue;
+    if (digits.startsWith('9') && digits.length == 9) {
+      localDigits = digits.substring(1);
+    }
+
+    if (localDigits.length != chilePhoneLocalDigitsLength) {
+      throw Exception(
+        'Escribe los 8 dígitos de tu número después de $chilePhonePrefix.',
+      );
+    }
+
+    return '$chilePhonePrefix$localDigits';
   }
 
   String _normalizeLocation(String value) {

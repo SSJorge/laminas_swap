@@ -21,6 +21,10 @@ service cloud.firestore {
         'comunaKey',
         'countryCode',
         'locationPrecision',
+        'description',
+        'contactVisible',
+        'publicContactType',
+        'publicContactValue',
         'missingIds',
         'duplicateIds',
         'lastActiveAt',
@@ -33,12 +37,38 @@ service cloud.firestore {
         'email',
         'contactType',
         'contactValue',
-        'contactVisible',
         'phone',
         'telefono',
         'whatsapp',
         'instagram'
       ]);
+    }
+
+    function publicProfileHasValidDescription() {
+      return !request.resource.data.keys().hasAny(['description'])
+        || (
+          request.resource.data.description is string
+          && request.resource.data.description.size() <= 200
+        );
+    }
+
+    function publicProfileHasValidPublicContact() {
+      return !request.resource.data.keys().hasAny([
+        'publicContactType',
+        'publicContactValue'
+      ])
+      || (
+        request.resource.data.keys().hasAll([
+          'publicContactType',
+          'publicContactValue'
+        ])
+        && (
+          request.resource.data.publicContactType == 'email'
+          || request.resource.data.publicContactType == 'phone'
+        )
+        && request.resource.data.publicContactValue is string
+        && request.resource.data.publicContactValue.size() > 0
+      );
     }
 
     match /users/{uid} {
@@ -57,7 +87,9 @@ service cloud.firestore {
 
       allow create, update: if isOwner(uid)
         && publicProfileHasOnlyAllowedFields()
-        && publicProfileHasNoPrivateContact();
+        && publicProfileHasNoPrivateContact()
+        && publicProfileHasValidDescription()
+        && publicProfileHasValidPublicContact();
 
       allow delete: if false;
     }

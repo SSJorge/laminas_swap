@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/album_catalog.dart';
 import '../models/match_candidate.dart';
@@ -73,9 +74,9 @@ class _MatchingScreenState extends State<MatchingScreen> {
                   icon: Icons.info_outline,
                   title: 'No se pudo calcular matching',
                   message: snapshot.error.toString().replaceFirst(
-                    'Exception: ',
-                    '',
-                  ),
+                        'Exception: ',
+                        '',
+                      ),
                   onRefresh: _refresh,
                 );
               }
@@ -125,7 +126,7 @@ class _MatchingInfoCard extends StatelessWidget {
         padding: EdgeInsets.all(16),
         child: Text(
           'Mostrando usuarios visibles de tu misma comuna. '
-          'El contacto real todavía no se muestra; eso se desbloquea en el Día 6.',
+          'La descripción se muestra en matches. El contacto solo aparece si esa persona lo marcó como público.',
         ),
       ),
     );
@@ -141,6 +142,30 @@ class _MatchCandidateCard extends StatelessWidget {
   final MatchCandidate candidate;
   final String Function(String cardId) formatCardId;
 
+  Future<void> _copyText(
+    BuildContext context,
+    String text,
+    String successMessage,
+  ) async {
+    await Clipboard.setData(ClipboardData(text: text));
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(successMessage)),
+    );
+  }
+
+  String _initial() {
+    final name = candidate.displayName.trim();
+
+    if (name.isEmpty) {
+      return '?';
+    }
+
+    return name.characters.first.toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     final matchType = candidate.hasTwoWayMatch
@@ -150,9 +175,7 @@ class _MatchCandidateCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
-        leading: CircleAvatar(
-          child: Text(candidate.displayName.characters.first.toUpperCase()),
-        ),
+        leading: CircleAvatar(child: Text(_initial())),
         title: Text(candidate.displayName),
         subtitle: Text(
           '${candidate.comuna.isEmpty ? 'Sin comuna' : candidate.comuna} · $matchType',
@@ -201,14 +224,41 @@ class _MatchCandidateCard extends StatelessWidget {
             formatCardId: formatCardId,
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.tonalIcon(
-              onPressed: null,
-              icon: const Icon(Icons.lock_outline),
-              label: const Text('Desbloqueo de contacto: Día 6'),
+          if (candidate.description.trim().isNotEmpty) ...[
+            _CopyableInfoBlock(
+              title: 'Descripción',
+              value: candidate.description,
+              copyLabel: 'Copiar descripción',
+              onCopy: () {
+                return _copyText(
+                  context,
+                  candidate.description,
+                  'Descripción copiada.',
+                );
+              },
             ),
-          ),
+            const SizedBox(height: 12),
+          ],
+          if (candidate.hasPublicContact) ...[
+            _CopyableInfoBlock(
+              title: candidate.contactLabel,
+              value: candidate.publicContactValue,
+              copyLabel: 'Copiar contacto',
+              onCopy: () {
+                return _copyText(
+                  context,
+                  candidate.publicContactValue,
+                  'Contacto copiado.',
+                );
+              },
+            ),
+          ] else ...[
+            const ListTile(
+              leading: Icon(Icons.lock_outline),
+              title: Text('Contacto privado'),
+              subtitle: Text('Este contacto se desbloqueará más adelante.'),
+            ),
+          ],
         ],
       ),
     );
@@ -277,6 +327,49 @@ class _CardIdSection extends StatelessWidget {
                   Chip(label: Text(formatCardId(cardId))),
               ],
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CopyableInfoBlock extends StatelessWidget {
+  const _CopyableInfoBlock({
+    required this.title,
+    required this.value,
+    required this.copyLabel,
+    required this.onCopy,
+  });
+
+  final String title;
+  final String value;
+  final String copyLabel;
+  final Future<void> Function() onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 6),
+          SelectableText(value),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: onCopy,
+              icon: const Icon(Icons.copy),
+              label: Text(copyLabel),
+            ),
+          ),
         ],
       ),
     );
