@@ -5,6 +5,10 @@ import 'cards_screen.dart';
 import 'matching_screen.dart';
 import 'profile_screen.dart';
 
+import 'confirmed_matches_screen.dart';
+import 'matching_screen.dart';
+import 'received_likes_screen.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -80,16 +84,52 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 Card(
                   child: ListTile(
-                    leading: const Icon(Icons.people),
-                    title: const Text('Matching'),
+                    leading: const Icon(Icons.search),
+                    title: const Text('Descubrir'),
                     subtitle: const Text(
-                      'Encuentra personas de tu comuna con láminas compatibles.',
+                      'Encuentra usuarios compatibles y dales like o dislike.',
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const MatchingScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.favorite_border),
+                    title: const Text('Likes recibidos'),
+                    subtitle: const Text(
+                      'Personas que te dieron like. Responde para crear match.',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ReceivedLikesScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.handshake_outlined),
+                    title: const Text('Mis matches'),
+                    subtitle: const Text(
+                      'Matches mutuos con descripción y contacto permitido.',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ConfirmedMatchesScreen(),
                         ),
                       );
                     },

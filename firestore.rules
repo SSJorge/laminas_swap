@@ -11,6 +11,15 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function hasLiked(fromUid, targetUid) {
+      return exists(/databases/$(database)/documents/users/$(fromUid)/actions/$(targetUid))
+        && get(/databases/$(database)/documents/users/$(fromUid)/actions/$(targetUid)).data.action == 'like';
+    }
+
+    function hasMutualLike(uidA, uidB) {
+      return signedIn() && hasLiked(uidA, uidB) && hasLiked(uidB, uidA);
+    }
+
     function publicProfileHasOnlyAllowedFields() {
       return request.resource.data.keys().hasOnly([
         'displayName',
@@ -21,10 +30,6 @@ service cloud.firestore {
         'comunaKey',
         'countryCode',
         'locationPrecision',
-        'description',
-        'contactVisible',
-        'publicContactType',
-        'publicContactValue',
         'missingIds',
         'duplicateIds',
         'lastActiveAt',
@@ -32,11 +37,15 @@ service cloud.firestore {
       ]);
     }
 
-    function publicProfileHasNoPrivateContact() {
+    function publicProfileHasNoPrivateFields() {
       return !request.resource.data.keys().hasAny([
+        'description',
         'email',
         'contactType',
         'contactValue',
+        'contactVisible',
+        'publicContactType',
+        'publicContactValue',
         'phone',
         'telefono',
         'whatsapp',
@@ -44,31 +53,48 @@ service cloud.firestore {
       ]);
     }
 
-    function publicProfileHasValidDescription() {
-      return !request.resource.data.keys().hasAny(['description'])
-        || (
-          request.resource.data.description is string
-          && request.resource.data.description.size() <= 200
-        );
+    function privateProfileHasOnlyAllowedFields() {
+      return request.resource.data.keys().hasOnly([
+        'description',
+        'contactType',
+        'contactValue',
+        'contactVisible',
+        'updatedAt'
+      ]);
     }
 
-    function publicProfileHasValidPublicContact() {
-      return !request.resource.data.keys().hasAny([
-        'publicContactType',
-        'publicContactValue'
-      ])
-      || (
-        request.resource.data.keys().hasAll([
-          'publicContactType',
-          'publicContactValue'
-        ])
+    function privateProfileHasValidDescription() {
+      return request.resource.data.description is string
+        && request.resource.data.description.size() <= 200;
+    }
+
+    function privateProfileHasValidContact() {
+      return (
+        request.resource.data.contactType == 'email'
+        || request.resource.data.contactType == 'phone'
+      )
+      && request.resource.data.contactValue is string
+      && request.resource.data.contactValue.size() > 0
+      && request.resource.data.contactVisible is bool;
+    }
+
+    function actionHasOnlyAllowedFields() {
+      return request.resource.data.keys().hasOnly([
+        'fromUid',
+        'targetUid',
+        'action',
+        'createdAt',
+        'updatedAt'
+      ]);
+    }
+
+    function actionIsValid(fromUid, targetUid) {
+      return request.resource.data.fromUid == fromUid
+        && request.resource.data.targetUid == targetUid
         && (
-          request.resource.data.publicContactType == 'email'
-          || request.resource.data.publicContactType == 'phone'
-        )
-        && request.resource.data.publicContactValue is string
-        && request.resource.data.publicContactValue.size() > 0
-      );
+          request.resource.data.action == 'like'
+          || request.resource.data.action == 'dislike'
+        );
     }
 
     match /users/{uid} {
@@ -80,6 +106,17 @@ service cloud.firestore {
       match /cards/{cardId} {
         allow read, write: if isOwner(uid);
       }
+
+      match /actions/{targetUid} {
+        allow read: if signedIn()
+          && (request.auth.uid == uid || request.auth.uid == targetUid);
+
+        allow create, update: if isOwner(uid)
+          && actionHasOnlyAllowedFields()
+          && actionIsValid(uid, targetUid);
+
+        allow delete: if isOwner(uid);
+      }
     }
 
     match /publicProfiles/{uid} {
@@ -87,11 +124,20 @@ service cloud.firestore {
 
       allow create, update: if isOwner(uid)
         && publicProfileHasOnlyAllowedFields()
-        && publicProfileHasNoPrivateContact()
-        && publicProfileHasValidDescription()
-        && publicProfileHasValidPublicContact();
+        && publicProfileHasNoPrivateFields();
 
       allow delete: if false;
+    }
+
+    match /privateProfiles/{uid} {
+      allow read: if isOwner(uid) || hasMutualLike(request.auth.uid, uid);
+
+      allow create, update: if isOwner(uid)
+        && privateProfileHasOnlyAllowedFields()
+        && privateProfileHasValidDescription()
+        && privateProfileHasValidContact();
+
+      allow delete: if isOwner(uid);
     }
   }
 }

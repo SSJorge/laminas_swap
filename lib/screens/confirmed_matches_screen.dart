@@ -1,23 +1,22 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/album_catalog.dart';
-import '../models/match_candidate.dart';
+import '../models/confirmed_match.dart';
 import '../services/matching_repository.dart';
 
-class MatchingScreen extends StatefulWidget {
-  const MatchingScreen({super.key});
+class ConfirmedMatchesScreen extends StatefulWidget {
+  const ConfirmedMatchesScreen({super.key});
 
   @override
-  State<MatchingScreen> createState() => _MatchingScreenState();
+  State<ConfirmedMatchesScreen> createState() => _ConfirmedMatchesScreenState();
 }
 
-class _MatchingScreenState extends State<MatchingScreen> {
+class _ConfirmedMatchesScreenState extends State<ConfirmedMatchesScreen> {
   late final MatchingRepository _matchingRepository;
-  late Future<List<MatchCandidate>> _matchesFuture;
-
-  bool _isSavingAction = false;
+  late Future<List<ConfirmedMatch>> _matchesFuture;
 
   final _cardById = {for (final card in allCardDefinitions) card.id: card};
 
@@ -25,72 +24,25 @@ class _MatchingScreenState extends State<MatchingScreen> {
   void initState() {
     super.initState();
     _matchingRepository = MatchingRepository(FirebaseFirestore.instance);
-    _matchesFuture = _loadMatches();
+    _matchesFuture = _loadConfirmedMatches();
   }
 
-  Future<List<MatchCandidate>> _loadMatches() {
+  Future<List<ConfirmedMatch>> _loadConfirmedMatches() {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
       return Future.error('No hay usuario autenticado.');
     }
 
-    return _matchingRepository.findMatches(uid: user.uid);
+    return _matchingRepository.findConfirmedMatches(uid: user.uid);
   }
 
   Future<void> _refresh() async {
     setState(() {
-      _matchesFuture = _loadMatches();
+      _matchesFuture = _loadConfirmedMatches();
     });
 
     await _matchesFuture;
-  }
-
-  Future<void> _saveAction({
-    required MatchCandidate candidate,
-    required String action,
-  }) async {
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null || _isSavingAction) {
-      return;
-    }
-
-    setState(() {
-      _isSavingAction = true;
-    });
-
-    try {
-      await _matchingRepository.setAction(
-        fromUid: user.uid,
-        targetUid: candidate.uid,
-        action: action,
-      );
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            action == 'like' ? 'Like enviado.' : 'Perfil descartado.',
-          ),
-        ),
-      );
-
-      await _refresh();
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error guardando acción: $e')));
-    } finally {
-      if (!mounted) return;
-
-      setState(() {
-        _isSavingAction = false;
-      });
-    }
   }
 
   String _formatCardId(String cardId) {
@@ -103,14 +55,38 @@ class _MatchingScreenState extends State<MatchingScreen> {
     return '${card.countryName} #${card.number}';
   }
 
+  String _initialFor(String value) {
+    final cleanValue = value.trim();
+
+    if (cleanValue.isEmpty) {
+      return '?';
+    }
+
+    return cleanValue[0].toUpperCase();
+  }
+
+  Future<void> _copyText(
+    BuildContext context,
+    String text,
+    String successMessage,
+  ) async {
+    await Clipboard.setData(ClipboardData(text: text));
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(successMessage)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Descubrir')),
+      appBar: AppBar(title: const Text('Mis matches')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 820),
-          child: FutureBuilder<List<MatchCandidate>>(
+          child: FutureBuilder<List<ConfirmedMatch>>(
             future: _matchesFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -120,7 +96,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
               if (snapshot.hasError) {
                 return _ScrollableMessage(
                   icon: Icons.info_outline,
-                  title: 'No se pudo cargar Descubrir',
+                  title: 'No se pudieron cargar tus matches',
                   message: snapshot.error.toString().replaceFirst(
                     'Exception: ',
                     '',
@@ -129,14 +105,14 @@ class _MatchingScreenState extends State<MatchingScreen> {
                 );
               }
 
-              final matches = snapshot.data ?? <MatchCandidate>[];
+              final matches = snapshot.data ?? <ConfirmedMatch>[];
 
               if (matches.isEmpty) {
                 return _ScrollableMessage(
-                  icon: Icons.people_outline,
-                  title: 'Todavía no hay perfiles por descubrir',
+                  icon: Icons.handshake_outlined,
+                  title: 'Todavía no tienes matches',
                   message:
-                      'Necesitas otros usuarios visibles en tu misma comuna con faltantes o repetidas compatibles.',
+                      'Cuando tú y otra persona se den like mutuamente, aparecerá aquí la descripción y el contacto permitido.',
                   onRefresh: _refresh,
                 );
               }
@@ -146,25 +122,33 @@ class _MatchingScreenState extends State<MatchingScreen> {
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    const _MatchingInfoCard(),
+                    const _ConfirmedMatchesInfoCard(),
                     const SizedBox(height: 12),
-                    for (final candidate in matches)
-                      _MatchCandidateCard(
-                        candidate: candidate,
+                    for (final confirmedMatch in matches)
+                      _ConfirmedMatchCard(
+                        confirmedMatch: confirmedMatch,
                         formatCardId: _formatCardId,
-                        isSavingAction: _isSavingAction,
-                        onDislike: () {
-                          return _saveAction(
-                            candidate: candidate,
-                            action: 'dislike',
-                          );
-                        },
-                        onLike: () {
-                          return _saveAction(
-                            candidate: candidate,
-                            action: 'like',
-                          );
-                        },
+                        initial: _initialFor(
+                          confirmedMatch.candidate.displayName,
+                        ),
+                        onCopyDescription: confirmedMatch.hasDescription
+                            ? () {
+                                return _copyText(
+                                  context,
+                                  confirmedMatch.description,
+                                  'Descripción copiada.',
+                                );
+                              }
+                            : null,
+                        onCopyContact: confirmedMatch.hasVisibleContact
+                            ? () {
+                                return _copyText(
+                                  context,
+                                  confirmedMatch.contactValue,
+                                  'Contacto copiado.',
+                                );
+                              }
+                            : null,
                       ),
                   ],
                 ),
@@ -177,8 +161,8 @@ class _MatchingScreenState extends State<MatchingScreen> {
   }
 }
 
-class _MatchingInfoCard extends StatelessWidget {
-  const _MatchingInfoCard();
+class _ConfirmedMatchesInfoCard extends StatelessWidget {
+  const _ConfirmedMatchesInfoCard();
 
   @override
   Widget build(BuildContext context) {
@@ -186,53 +170,40 @@ class _MatchingInfoCard extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Text(
-          'Mostrando usuarios visibles de tu misma comuna con láminas compatibles. '
-          'Da Like si quieres intentar hacer match. La descripción y el contacto '
-          'deben mostrarse recién cuando ambos usuarios se den Like.',
+          'Aquí solo aparecen matches mutuos. Recién en esta pantalla se muestra '
+          'la descripción y el contacto, si la otra persona permitió mostrarlo.',
         ),
       ),
     );
   }
 }
 
-class _MatchCandidateCard extends StatelessWidget {
-  const _MatchCandidateCard({
-    required this.candidate,
+class _ConfirmedMatchCard extends StatelessWidget {
+  const _ConfirmedMatchCard({
+    required this.confirmedMatch,
     required this.formatCardId,
-    required this.isSavingAction,
-    required this.onDislike,
-    required this.onLike,
+    required this.initial,
+    required this.onCopyDescription,
+    required this.onCopyContact,
   });
 
-  final MatchCandidate candidate;
+  final ConfirmedMatch confirmedMatch;
   final String Function(String cardId) formatCardId;
-  final bool isSavingAction;
-  final Future<void> Function() onDislike;
-  final Future<void> Function() onLike;
-
-  String _initial() {
-    final name = candidate.displayName.trim();
-
-    if (name.isEmpty) {
-      return '?';
-    }
-
-    return name.characters.first.toUpperCase();
-  }
+  final String initial;
+  final Future<void> Function()? onCopyDescription;
+  final Future<void> Function()? onCopyContact;
 
   @override
   Widget build(BuildContext context) {
-    final compatibility = candidate.hasTwoWayMatch
-        ? 'intercambio posible'
-        : 'coincidencia parcial';
+    final candidate = confirmedMatch.candidate;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
-        leading: CircleAvatar(child: Text(_initial())),
+        leading: CircleAvatar(child: Text(initial)),
         title: Text(candidate.displayName),
         subtitle: Text(
-          '${candidate.comuna.isEmpty ? 'Sin comuna' : candidate.comuna} · Compatibilidad: $compatibility',
+          candidate.comuna.isEmpty ? 'Sin comuna' : candidate.comuna,
         ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -241,7 +212,7 @@ class _MatchCandidateCard extends StatelessWidget {
               candidate.totalMatchCount.toString(),
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const Text('compat.'),
+            const Text('matches'),
           ],
         ),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -278,24 +249,72 @@ class _MatchCandidateCard extends StatelessWidget {
             formatCardId: formatCardId,
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: isSavingAction ? null : onDislike,
-                  icon: const Icon(Icons.close),
-                  label: const Text('Dislike'),
-                ),
+          _CopyableInfoBlock(
+            title: 'Descripción',
+            value: confirmedMatch.hasDescription
+                ? confirmedMatch.description
+                : 'Sin descripción.',
+            copyLabel: 'Copiar descripción',
+            onCopy: onCopyDescription,
+          ),
+          const SizedBox(height: 12),
+          if (confirmedMatch.hasVisibleContact)
+            _CopyableInfoBlock(
+              title: confirmedMatch.contactLabel,
+              value: confirmedMatch.contactValue,
+              copyLabel: 'Copiar contacto',
+              onCopy: onCopyContact,
+            )
+          else
+            const ListTile(
+              leading: Icon(Icons.lock_outline),
+              title: Text('Contacto privado'),
+              subtitle: Text(
+                'Esta persona no permite mostrar su contacto automáticamente.',
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: isSavingAction ? null : onLike,
-                  icon: const Icon(Icons.favorite),
-                  label: const Text('Like'),
-                ),
-              ),
-            ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CopyableInfoBlock extends StatelessWidget {
+  const _CopyableInfoBlock({
+    required this.title,
+    required this.value,
+    required this.copyLabel,
+    required this.onCopy,
+  });
+
+  final String title;
+  final String value;
+  final String copyLabel;
+  final Future<void> Function()? onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 6),
+          SelectableText(value),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: onCopy,
+              icon: const Icon(Icons.copy),
+              label: Text(copyLabel),
+            ),
           ),
         ],
       ),

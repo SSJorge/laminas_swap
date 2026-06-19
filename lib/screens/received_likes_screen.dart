@@ -6,18 +6,18 @@ import '../data/album_catalog.dart';
 import '../models/match_candidate.dart';
 import '../services/matching_repository.dart';
 
-class MatchingScreen extends StatefulWidget {
-  const MatchingScreen({super.key});
+class ReceivedLikesScreen extends StatefulWidget {
+  const ReceivedLikesScreen({super.key});
 
   @override
-  State<MatchingScreen> createState() => _MatchingScreenState();
+  State<ReceivedLikesScreen> createState() => _ReceivedLikesScreenState();
 }
 
-class _MatchingScreenState extends State<MatchingScreen> {
+class _ReceivedLikesScreenState extends State<ReceivedLikesScreen> {
   late final MatchingRepository _matchingRepository;
-  late Future<List<MatchCandidate>> _matchesFuture;
+  late Future<List<MatchCandidate>> _receivedLikesFuture;
 
-  bool _isSavingAction = false;
+  final Set<String> _savingCandidateIds = <String>{};
 
   final _cardById = {for (final card in allCardDefinitions) card.id: card};
 
@@ -25,25 +25,25 @@ class _MatchingScreenState extends State<MatchingScreen> {
   void initState() {
     super.initState();
     _matchingRepository = MatchingRepository(FirebaseFirestore.instance);
-    _matchesFuture = _loadMatches();
+    _receivedLikesFuture = _loadReceivedLikes();
   }
 
-  Future<List<MatchCandidate>> _loadMatches() {
+  Future<List<MatchCandidate>> _loadReceivedLikes() {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
       return Future.error('No hay usuario autenticado.');
     }
 
-    return _matchingRepository.findMatches(uid: user.uid);
+    return _matchingRepository.findReceivedLikes(uid: user.uid);
   }
 
   Future<void> _refresh() async {
     setState(() {
-      _matchesFuture = _loadMatches();
+      _receivedLikesFuture = _loadReceivedLikes();
     });
 
-    await _matchesFuture;
+    await _receivedLikesFuture;
   }
 
   Future<void> _saveAction({
@@ -52,12 +52,12 @@ class _MatchingScreenState extends State<MatchingScreen> {
   }) async {
     final user = FirebaseAuth.instance.currentUser;
 
-    if (user == null || _isSavingAction) {
+    if (user == null || _savingCandidateIds.contains(candidate.uid)) {
       return;
     }
 
     setState(() {
-      _isSavingAction = true;
+      _savingCandidateIds.add(candidate.uid);
     });
 
     try {
@@ -72,7 +72,9 @@ class _MatchingScreenState extends State<MatchingScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            action == 'like' ? 'Like enviado.' : 'Perfil descartado.',
+            action == 'like'
+                ? 'Match creado. Ahora puedes verlo en Mis matches.'
+                : 'Like rechazado.',
           ),
         ),
       );
@@ -88,7 +90,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
       if (!mounted) return;
 
       setState(() {
-        _isSavingAction = false;
+        _savingCandidateIds.remove(candidate.uid);
       });
     }
   }
@@ -103,15 +105,25 @@ class _MatchingScreenState extends State<MatchingScreen> {
     return '${card.countryName} #${card.number}';
   }
 
+  String _initialFor(String value) {
+    final cleanValue = value.trim();
+
+    if (cleanValue.isEmpty) {
+      return '?';
+    }
+
+    return cleanValue[0].toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Descubrir')),
+      appBar: AppBar(title: const Text('Likes recibidos')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 820),
           child: FutureBuilder<List<MatchCandidate>>(
-            future: _matchesFuture,
+            future: _receivedLikesFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -120,7 +132,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
               if (snapshot.hasError) {
                 return _ScrollableMessage(
                   icon: Icons.info_outline,
-                  title: 'No se pudo cargar Descubrir',
+                  title: 'No se pudieron cargar tus likes',
                   message: snapshot.error.toString().replaceFirst(
                     'Exception: ',
                     '',
@@ -129,14 +141,14 @@ class _MatchingScreenState extends State<MatchingScreen> {
                 );
               }
 
-              final matches = snapshot.data ?? <MatchCandidate>[];
+              final candidates = snapshot.data ?? <MatchCandidate>[];
 
-              if (matches.isEmpty) {
+              if (candidates.isEmpty) {
                 return _ScrollableMessage(
-                  icon: Icons.people_outline,
-                  title: 'Todavía no hay perfiles por descubrir',
+                  icon: Icons.favorite_border,
+                  title: 'Todavía no tienes likes pendientes',
                   message:
-                      'Necesitas otros usuarios visibles en tu misma comuna con faltantes o repetidas compatibles.',
+                      'Cuando alguien te dé like, aparecerá aquí. Si tú también le das like, se crea un match.',
                   onRefresh: _refresh,
                 );
               }
@@ -146,23 +158,24 @@ class _MatchingScreenState extends State<MatchingScreen> {
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    const _MatchingInfoCard(),
+                    const _ReceivedLikesInfoCard(),
                     const SizedBox(height: 12),
-                    for (final candidate in matches)
-                      _MatchCandidateCard(
+                    for (final candidate in candidates)
+                      _ReceivedLikeCard(
                         candidate: candidate,
+                        isSaving: _savingCandidateIds.contains(candidate.uid),
                         formatCardId: _formatCardId,
-                        isSavingAction: _isSavingAction,
-                        onDislike: () {
-                          return _saveAction(
-                            candidate: candidate,
-                            action: 'dislike',
-                          );
-                        },
+                        initial: _initialFor(candidate.displayName),
                         onLike: () {
                           return _saveAction(
                             candidate: candidate,
                             action: 'like',
+                          );
+                        },
+                        onDislike: () {
+                          return _saveAction(
+                            candidate: candidate,
+                            action: 'dislike',
                           );
                         },
                       ),
@@ -177,8 +190,8 @@ class _MatchingScreenState extends State<MatchingScreen> {
   }
 }
 
-class _MatchingInfoCard extends StatelessWidget {
-  const _MatchingInfoCard();
+class _ReceivedLikesInfoCard extends StatelessWidget {
+  const _ReceivedLikesInfoCard();
 
   @override
   Widget build(BuildContext context) {
@@ -186,53 +199,44 @@ class _MatchingInfoCard extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Text(
-          'Mostrando usuarios visibles de tu misma comuna con láminas compatibles. '
-          'Da Like si quieres intentar hacer match. La descripción y el contacto '
-          'deben mostrarse recién cuando ambos usuarios se den Like.',
+          'Estas personas ya te dieron like. Si tú también les das like, '
+          'se crea un match y recién ahí se desbloquea su descripción/contacto.',
         ),
       ),
     );
   }
 }
 
-class _MatchCandidateCard extends StatelessWidget {
-  const _MatchCandidateCard({
+class _ReceivedLikeCard extends StatelessWidget {
+  const _ReceivedLikeCard({
     required this.candidate,
+    required this.isSaving,
     required this.formatCardId,
-    required this.isSavingAction,
-    required this.onDislike,
+    required this.initial,
     required this.onLike,
+    required this.onDislike,
   });
 
   final MatchCandidate candidate;
+  final bool isSaving;
   final String Function(String cardId) formatCardId;
-  final bool isSavingAction;
-  final Future<void> Function() onDislike;
+  final String initial;
   final Future<void> Function() onLike;
-
-  String _initial() {
-    final name = candidate.displayName.trim();
-
-    if (name.isEmpty) {
-      return '?';
-    }
-
-    return name.characters.first.toUpperCase();
-  }
+  final Future<void> Function() onDislike;
 
   @override
   Widget build(BuildContext context) {
-    final compatibility = candidate.hasTwoWayMatch
-        ? 'intercambio posible'
-        : 'coincidencia parcial';
+    final matchType = candidate.hasTwoWayMatch
+        ? 'Intercambio posible'
+        : 'Coincidencia parcial';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
-        leading: CircleAvatar(child: Text(_initial())),
+        leading: CircleAvatar(child: Text(initial)),
         title: Text(candidate.displayName),
         subtitle: Text(
-          '${candidate.comuna.isEmpty ? 'Sin comuna' : candidate.comuna} · Compatibilidad: $compatibility',
+          '${candidate.comuna.isEmpty ? 'Sin comuna' : candidate.comuna} · $matchType',
         ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -241,7 +245,7 @@ class _MatchCandidateCard extends StatelessWidget {
               candidate.totalMatchCount.toString(),
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const Text('compat.'),
+            const Text('matches'),
           ],
         ),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -282,7 +286,7 @@ class _MatchCandidateCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: isSavingAction ? null : onDislike,
+                  onPressed: isSaving ? null : onDislike,
                   icon: const Icon(Icons.close),
                   label: const Text('Dislike'),
                 ),
@@ -290,9 +294,9 @@ class _MatchCandidateCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: isSavingAction ? null : onLike,
+                  onPressed: isSaving ? null : onLike,
                   icon: const Icon(Icons.favorite),
-                  label: const Text('Like'),
+                  label: const Text('Like de vuelta'),
                 ),
               ),
             ],

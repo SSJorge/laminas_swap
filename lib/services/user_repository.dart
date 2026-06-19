@@ -13,6 +13,7 @@ class UserRepository {
     String? displayName,
   }) async {
     final now = FieldValue.serverTimestamp();
+    final privateProfileRef = _db.collection('privateProfiles').doc(user.uid);
 
     final cleanName = _resolveDisplayName(
       displayName: displayName,
@@ -89,6 +90,14 @@ class UserRepository {
       'instagram': FieldValue.delete(),
       'duplicateCounts': FieldValue.delete(),
     }, SetOptions(merge: true));
+
+    batch.set(privateProfileRef, {
+      'description': '',
+      'contactType': contactTypeEmail,
+      'contactValue': user.email ?? '',
+      'contactVisible': false,
+      'updatedAt': now,
+    });
 
     await batch.commit();
   }
@@ -176,20 +185,14 @@ class UserRepository {
       'comunaKey': cleanComunaKey,
       'countryCode': 'CL',
       'locationPrecision': 'comuna',
-      'description': cleanDescription,
-      'contactVisible': contactVisible,
       'lastActiveAt': now,
       'profileVisible': profileVisible,
 
-      if (contactVisible) ...{
-        'publicContactType': cleanContactType,
-        'publicContactValue': effectiveContactValue,
-      } else ...{
-        'publicContactType': FieldValue.delete(),
-        'publicContactValue': FieldValue.delete(),
-      },
-
-      // Nunca exponer estos nombres privados/antiguos en publicProfiles.
+      // Estos campos NO pueden ser públicos.
+      'description': FieldValue.delete(),
+      'contactVisible': FieldValue.delete(),
+      'publicContactType': FieldValue.delete(),
+      'publicContactValue': FieldValue.delete(),
       'contactType': FieldValue.delete(),
       'contactValue': FieldValue.delete(),
       'email': FieldValue.delete(),
@@ -197,6 +200,15 @@ class UserRepository {
       'telefono': FieldValue.delete(),
       'whatsapp': FieldValue.delete(),
       'instagram': FieldValue.delete(),
+    }, SetOptions(merge: true));
+    final privateProfileRef = _db.collection('privateProfiles').doc(user.uid);
+
+    batch.set(privateProfileRef, {
+      'description': cleanDescription,
+      'contactType': cleanContactType,
+      'contactValue': effectiveContactValue,
+      'contactVisible': contactVisible,
+      'updatedAt': now,
     }, SetOptions(merge: true));
 
     await batch.commit();

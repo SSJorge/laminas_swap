@@ -355,18 +355,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Descripción',
                     hintText:
-                        'Ej: cambio Messi repetido por 30 fichas que me falten',
-                    helperText:
-                        'Visible en tus resultados de matching. Puede quedar vacía.',
+                        'Ej: cambio Messi repetido por 30 fichas que me falten, mi insta es @mi.insta',
+                    helperText: 'Solo se mostrará después de un match mutuo.',
                     border: OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile(
                   value: _contactVisible,
-                  title: const Text('Contacto público en matches'),
+                  title: const Text('Mostrar contacto después del match'),
                   subtitle: const Text(
-                    'Si lo apagas, tu contacto quedará privado hasta desbloqueo.',
+                    'La descripción se mostrará después del match. El contacto solo si activas esto.',
                   ),
                   onChanged: (value) {
                     setState(() {
