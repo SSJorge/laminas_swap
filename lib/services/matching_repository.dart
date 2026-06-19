@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/match_candidate.dart';
 import '../models/confirmed_match.dart';
 import '../data/daily_limits.dart';
+import '../models/user_entitlements.dart';
 
 class MatchingRepository {
   MatchingRepository(this._db);
@@ -316,6 +317,15 @@ class MatchingRepository {
         : DailyLimitType.dislike;
 
     final quotaDefinition = dailyLimitDefinitionFor(quotaType);
+
+    final entitlementsDoc = await _db
+        .collection('userEntitlements')
+        .doc(fromUid)
+        .get();
+
+    final entitlements = UserEntitlements.fromMap(entitlementsDoc.data());
+    final quotaLimit = quotaDefinition.limitFor(entitlements);
+
     final dayKey = todayUsageDocId();
     final now = FieldValue.serverTimestamp();
 
@@ -340,7 +350,7 @@ class MatchingRepository {
     final usageDoc = await usageRef.get();
     final used = _readInt(usageDoc.data()?[quotaDefinition.field]);
 
-    if (used >= quotaDefinition.limit) {
+    if (used >= quotaLimit) {
       throw Exception(
         'Ya usaste tus ${quotaDefinition.label.toLowerCase()} de hoy.',
       );
@@ -355,6 +365,11 @@ class MatchingRepository {
       }
 
       final freshUsed = _readInt(freshUsageDoc.data()?[quotaDefinition.field]);
+
+      if (freshUsed >= quotaLimit) {
+        return;
+      }
+      //duda
 
       transaction.set(usageRef, {
         'dayKey': dayKey,

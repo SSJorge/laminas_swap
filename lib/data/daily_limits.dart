@@ -1,42 +1,67 @@
+import '../models/user_entitlements.dart';
+
 enum DailyLimitType { like, dislike, userSearch, communeChange }
 
 class DailyLimitDefinition {
   const DailyLimitDefinition({
     required this.field,
-    required this.limit,
+    required this.freeBaseLimit,
+    required this.rewardedAdExtraLimit,
+    required this.premiumLimit,
     required this.label,
   });
 
   final String field;
-  final int limit;
+  final int freeBaseLimit;
+  final int rewardedAdExtraLimit;
+  final int premiumLimit;
   final String label;
+
+  int limitFor(UserEntitlements entitlements) {
+    if (entitlements.premiumEnabled) {
+      return premiumLimit;
+    }
+
+    if (entitlements.adsRemoved) {
+      return freeBaseLimit + rewardedAdExtraLimit;
+    }
+
+    return freeBaseLimit;
+  }
+
+  int get freeLimitWithRewardedAds {
+    return freeBaseLimit + rewardedAdExtraLimit;
+  }
 }
 
 // Edita estos números cuando quieras cambiar los límites.
-const int dailyLikeLimit = 3;
-const int dailyDislikeLimit = 3;
-const int dailyUserSearchLimit = 3;
-const int dailyCommuneChangeLimit = 3;
-
 const Map<DailyLimitType, DailyLimitDefinition> dailyLimitDefinitions = {
   DailyLimitType.like: DailyLimitDefinition(
     field: 'likesUsed',
-    limit: dailyLikeLimit,
+    freeBaseLimit: 3,
+    rewardedAdExtraLimit: 3,
+    premiumLimit: 15,
     label: 'Likes',
   ),
   DailyLimitType.dislike: DailyLimitDefinition(
     field: 'dislikesUsed',
-    limit: dailyDislikeLimit,
+    freeBaseLimit: 20,
+    rewardedAdExtraLimit: 20,
+    premiumLimit: 80,
     label: 'Dislikes',
   ),
   DailyLimitType.userSearch: DailyLimitDefinition(
     field: 'userSearchesUsed',
-    limit: dailyUserSearchLimit,
+    freeBaseLimit: 3,
+    rewardedAdExtraLimit: 3,
+    premiumLimit: 15,
     label: 'Búsquedas exactas',
   ),
   DailyLimitType.communeChange: DailyLimitDefinition(
     field: 'communeChangesUsed',
-    limit: dailyCommuneChangeLimit,
+    freeBaseLimit: 3,
+    rewardedAdExtraLimit: 1,
+    premiumLimit: 10,
     label: 'Cambios de comuna',
   ),
 };

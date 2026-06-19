@@ -5,3 +5,16 @@ http://localhost:5000/
 https://laminas-swap.web.app actualiza:
 flutter build web
 firebase deploy --only hosting
+
+
+Día Premium 2:
+- botón “Quiero premium”
+- pantalla de planes
+- premium manual por Firestore
+
+Y más adelante:
+
+Día Premium 3:
+- 4 espacios por pantalla
+- free: 3 usuarios + 1 anuncio
+- premium: 4 usuarios reales

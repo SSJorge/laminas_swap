@@ -195,5 +195,10 @@ service cloud.firestore {
 
       allow delete: if isOwner(uid);
     }
+    match /userEntitlements/{uid} {
+      allow read: if isOwner(uid);
+
+      allow create, update, delete: if false;
+    }
   }
 }

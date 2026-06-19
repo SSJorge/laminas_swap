@@ -9,6 +9,7 @@ import 'confirmed_matches_screen.dart';
 import 'received_likes_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_search_screen.dart';
+import '../widgets/plan_status_card.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -62,6 +63,9 @@ class HomeScreen extends StatelessWidget {
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
                 const SizedBox(height: 8),
+                const SizedBox(height: 16),
+                const PlanStatusCard(),
+                const SizedBox(height: 12),
                 const Text(
                   'Registra tus láminas, configura tu perfil y encuentra intercambios cercanos.',
                 ),

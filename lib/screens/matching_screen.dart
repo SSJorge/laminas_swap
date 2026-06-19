@@ -6,6 +6,9 @@ import '../models/match_candidate.dart';
 import '../services/matching_repository.dart';
 import '../data/daily_limits.dart';
 import '../widgets/daily_limits_card.dart';
+import '../models/user_entitlements.dart';
+import '../services/daily_quota_repository.dart';
+import '../widgets/ad_placeholder_card.dart';
 
 class MatchingScreen extends StatefulWidget {
   const MatchingScreen({super.key});
@@ -151,6 +154,24 @@ class _MatchingScreenState extends State<MatchingScreen> {
                     const SizedBox(height: 12),
                     const DailyLimitsCard(
                       types: [DailyLimitType.like, DailyLimitType.dislike],
+                    ),
+                    StreamBuilder<UserEntitlements>(
+                      stream: DailyQuotaRepository(FirebaseFirestore.instance)
+                          .watchEntitlements(
+                            FirebaseAuth.instance.currentUser!.uid,
+                          ),
+                      builder: (context, entitlementSnapshot) {
+                        final entitlements =
+                            entitlementSnapshot.data ?? UserEntitlements.free();
+
+                        if (entitlements.adsRemoved) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return const Column(
+                          children: [AdPlaceholderCard(), SizedBox(height: 12)],
+                        );
+                      },
                     ),
                     const SizedBox(height: 12),
                     for (final candidate in matches)

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../data/profile_constants.dart';
 import '../utils/display_name_utils.dart';
 import '../data/daily_limits.dart';
+import '../models/user_entitlements.dart';
 
 class UserRepository {
   UserRepository(this._db);
@@ -181,6 +182,13 @@ class UserRepository {
       final quotaDefinition = dailyLimitDefinitionFor(
         DailyLimitType.communeChange,
       );
+      final entitlementsDoc = await _db
+          .collection('userEntitlements')
+          .doc(user.uid)
+          .get();
+
+      final entitlements = UserEntitlements.fromMap(entitlementsDoc.data());
+      final quotaLimit = quotaDefinition.limitFor(entitlements);
 
       final dayKey = todayUsageDocId();
 
@@ -195,7 +203,7 @@ class UserRepository {
 
       final used = _readInt(dailyUsageData?[quotaDefinition.field]);
 
-      if (used >= quotaDefinition.limit) {
+      if (used >= quotaLimit) {
         throw Exception(
           'Ya usaste tus ${quotaDefinition.label.toLowerCase()} de hoy.',
         );
