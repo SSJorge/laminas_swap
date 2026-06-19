@@ -7,6 +7,8 @@ import '../data/chile_locations.dart';
 import '../data/profile_constants.dart';
 import '../services/user_repository.dart';
 import '../utils/display_name_utils.dart';
+import '../data/daily_limits.dart';
+import '../widgets/daily_limits_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -398,6 +400,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Text(_message!, textAlign: TextAlign.center),
                   ),
+                //limites diarios
+                const DailyLimitsCard(types: [DailyLimitType.communeChange]),
+                const SizedBox(height: 12),
+
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(

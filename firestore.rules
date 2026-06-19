@@ -116,6 +116,17 @@ service cloud.firestore {
         );
     }
 
+    function dailyUsageHasOnlyAllowedFields() {
+      return request.resource.data.keys().hasOnly([
+        'dayKey',
+        'likesUsed',
+        'dislikesUsed',
+        'userSearchesUsed',
+        'communeChangesUsed',
+        'updatedAt'
+      ]);
+    }
+
     match /users/{uid} {
       allow create: if isOwner(uid);
       allow read: if isOwner(uid);
@@ -133,6 +144,15 @@ service cloud.firestore {
         allow create, update: if isOwner(uid)
           && actionHasOnlyAllowedFields()
           && actionIsValid(uid, targetUid);
+
+        allow delete: if isOwner(uid);
+      }
+
+      match /dailyUsage/{dayKey} {
+        allow read: if isOwner(uid);
+
+        allow create, update: if isOwner(uid)
+          && dailyUsageHasOnlyAllowedFields();
 
         allow delete: if isOwner(uid);
       }

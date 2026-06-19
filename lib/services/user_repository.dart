@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../data/profile_constants.dart';
 import '../utils/display_name_utils.dart';
+import '../data/daily_limits.dart';
 
 class UserRepository {
   UserRepository(this._db);
@@ -161,6 +162,55 @@ class UserRepository {
 
       final userData = userDoc.data() ?? <String, dynamic>{};
       final oldNameKey = userData['displayNameKey'] as String?;
+      //limite
+      final location = userData['location'];
+
+      String oldComunaKey = '';
+
+      if (location is Map) {
+        final rawOldComunaKey = location['comunaKey'];
+
+        if (rawOldComunaKey is String) {
+          oldComunaKey = rawOldComunaKey;
+        }
+      }
+
+      final shouldConsumeCommuneChange =
+          oldComunaKey.isNotEmpty && oldComunaKey != cleanComunaKey;
+
+      DocumentReference<Map<String, dynamic>>? dailyUsageRef;
+      Map<String, dynamic>? dailyUsageUpdate;
+
+      if (shouldConsumeCommuneChange) {
+        final quotaDefinition = dailyLimitDefinitionFor(
+          DailyLimitType.communeChange,
+        );
+
+        final dayKey = todayUsageDocId();
+
+        dailyUsageRef = _db
+            .collection('users')
+            .doc(user.uid)
+            .collection('dailyUsage')
+            .doc(dayKey);
+
+        final dailyUsageDoc = await transaction.get(dailyUsageRef);
+        final dailyUsageData = dailyUsageDoc.data();
+
+        final used = _readInt(dailyUsageData?[quotaDefinition.field]);
+
+        if (used >= quotaDefinition.limit) {
+          throw Exception(
+            'Ya usaste tus ${quotaDefinition.label.toLowerCase()} de hoy.',
+          );
+        }
+
+        dailyUsageUpdate = {
+          'dayKey': dayKey,
+          quotaDefinition.field: used + 1,
+          'updatedAt': now,
+        };
+      } //limite
 
       if (newUsernameDoc.exists) {
         final ownerUid = newUsernameDoc.data()?['uid'];
@@ -239,6 +289,13 @@ class UserRepository {
         'contactVisible': contactVisible,
         'updatedAt': now,
       }, SetOptions(merge: true));
+      if (dailyUsageRef != null && dailyUsageUpdate != null) {
+        transaction.set(
+          dailyUsageRef,
+          dailyUsageUpdate,
+          SetOptions(merge: true),
+        );
+      }
     });
 
     await user.updateDisplayName(cleanName);
@@ -302,5 +359,17 @@ class UserRepository {
         .replaceAll('ú', 'u')
         .replaceAll('ñ', 'n')
         .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  int _readInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    return 0;
   }
 }

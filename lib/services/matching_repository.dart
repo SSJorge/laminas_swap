@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/match_candidate.dart';
 import '../models/confirmed_match.dart';
+import '../data/daily_limits.dart';
 
 class MatchingRepository {
   MatchingRepository(this._db);
@@ -310,20 +311,57 @@ class MatchingRepository {
       throw ArgumentError('La acción debe ser like o dislike.');
     }
 
+    final quotaType = action == 'like'
+        ? DailyLimitType.like
+        : DailyLimitType.dislike;
+
+    final quotaDefinition = dailyLimitDefinitionFor(quotaType);
+    final dayKey = todayUsageDocId();
     final now = FieldValue.serverTimestamp();
 
-    await _db
+    final actionRef = _db
         .collection('users')
         .doc(fromUid)
         .collection('actions')
-        .doc(targetUid)
-        .set({
-          'fromUid': fromUid,
-          'targetUid': targetUid,
-          'action': action,
-          'createdAt': now,
-          'updatedAt': now,
-        }, SetOptions(merge: true));
+        .doc(targetUid);
+
+    final usageRef = _db
+        .collection('users')
+        .doc(fromUid)
+        .collection('dailyUsage')
+        .doc(dayKey);
+
+    await _db.runTransaction((transaction) async {
+      final actionDoc = await transaction.get(actionRef);
+      final usageDoc = await transaction.get(usageRef);
+
+      if (actionDoc.exists) {
+        throw Exception('Ya respondiste a este perfil.');
+      }
+
+      final usageData = usageDoc.data();
+      final used = _readInt(usageData?[quotaDefinition.field]);
+
+      if (used >= quotaDefinition.limit) {
+        throw Exception(
+          'Ya usaste tus ${quotaDefinition.label.toLowerCase()} de hoy.',
+        );
+      }
+
+      transaction.set(usageRef, {
+        'dayKey': dayKey,
+        quotaDefinition.field: used + 1,
+        'updatedAt': now,
+      }, SetOptions(merge: true));
+
+      transaction.set(actionRef, {
+        'fromUid': fromUid,
+        'targetUid': targetUid,
+        'action': action,
+        'createdAt': now,
+        'updatedAt': now,
+      });
+    });
   }
 
   int _compareMatches(MatchCandidate a, MatchCandidate b) {
@@ -408,5 +446,17 @@ class MatchingRepository {
         .replaceAll('ú', 'u')
         .replaceAll('ñ', 'n')
         .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  int _readInt(dynamic value) {
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    return 0;
   }
 }

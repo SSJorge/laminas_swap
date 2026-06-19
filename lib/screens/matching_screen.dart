@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../models/match_candidate.dart';
 import '../services/matching_repository.dart';
+import '../data/daily_limits.dart';
+import '../widgets/daily_limits_card.dart';
 
 class MatchingScreen extends StatefulWidget {
   const MatchingScreen({super.key});
@@ -144,6 +146,10 @@ class _MatchingScreenState extends State<MatchingScreen> {
                   padding: const EdgeInsets.all(16),
                   children: [
                     const _MatchingInfoCard(),
+                    const SizedBox(height: 12),
+                    const DailyLimitsCard(
+                      types: [DailyLimitType.like, DailyLimitType.dislike],
+                    ),
                     const SizedBox(height: 12),
                     for (final candidate in matches)
                       _MatchCandidateCard(

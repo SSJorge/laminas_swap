@@ -7,6 +7,9 @@ import '../data/profile_constants.dart';
 import '../models/match_candidate.dart';
 import '../services/matching_repository.dart';
 import '../services/user_search_repository.dart';
+import '../data/daily_limits.dart';
+import '../services/daily_quota_repository.dart';
+import '../widgets/daily_limits_card.dart';
 
 class UserSearchScreen extends StatefulWidget {
   const UserSearchScreen({super.key});
@@ -20,6 +23,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
 
   late final UserSearchRepository _userSearchRepository;
   late final MatchingRepository _matchingRepository;
+  late final DailyQuotaRepository _dailyQuotaRepository;
 
   MatchCandidate? _candidate;
   bool _isSearching = false;
@@ -32,6 +36,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
     final db = FirebaseFirestore.instance;
     _userSearchRepository = UserSearchRepository(db);
     _matchingRepository = MatchingRepository(db);
+    _dailyQuotaRepository = DailyQuotaRepository(db);
   }
 
   @override
@@ -54,6 +59,10 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
     });
 
     try {
+      await _dailyQuotaRepository.consume(
+        uid: user.uid,
+        type: DailyLimitType.userSearch,
+      );
       final candidate = await _userSearchRepository.findCandidateByDisplayName(
         myUid: user.uid,
         displayName: _searchController.text,
@@ -151,6 +160,8 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+              const DailyLimitsCard(types: [DailyLimitType.userSearch]),
               const SizedBox(height: 16),
               TextField(
                 controller: _searchController,

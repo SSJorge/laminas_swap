@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../models/match_candidate.dart';
 import '../services/matching_repository.dart';
+import '../data/daily_limits.dart';
+import '../widgets/daily_limits_card.dart';
 
 class ReceivedLikesScreen extends StatefulWidget {
   const ReceivedLikesScreen({super.key});
@@ -146,6 +148,10 @@ class _ReceivedLikesScreenState extends State<ReceivedLikesScreen> {
                   padding: const EdgeInsets.all(16),
                   children: [
                     const _ReceivedLikesInfoCard(),
+                    const SizedBox(height: 12),
+                    const DailyLimitsCard(
+                      types: [DailyLimitType.like, DailyLimitType.dislike],
+                    ),
                     const SizedBox(height: 12),
                     for (final candidate in candidates)
                       _ReceivedLikeCard(
