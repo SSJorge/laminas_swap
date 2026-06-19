@@ -6,7 +6,6 @@ import 'matching_screen.dart';
 import 'profile_screen.dart';
 
 import 'confirmed_matches_screen.dart';
-import 'matching_screen.dart';
 import 'received_likes_screen.dart';
 
 class HomeScreen extends StatelessWidget {

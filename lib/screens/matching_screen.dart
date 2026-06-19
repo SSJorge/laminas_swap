@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../data/album_catalog.dart';
 import '../models/match_candidate.dart';
 import '../services/matching_repository.dart';
 
@@ -17,9 +16,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
   late final MatchingRepository _matchingRepository;
   late Future<List<MatchCandidate>> _matchesFuture;
 
-  bool _isSavingAction = false;
-
-  final _cardById = {for (final card in allCardDefinitions) card.id: card};
+  final Set<String> _savingCandidateIds = <String>{};
 
   @override
   void initState() {
@@ -52,12 +49,12 @@ class _MatchingScreenState extends State<MatchingScreen> {
   }) async {
     final user = FirebaseAuth.instance.currentUser;
 
-    if (user == null || _isSavingAction) {
+    if (user == null || _savingCandidateIds.contains(candidate.uid)) {
       return;
     }
 
     setState(() {
-      _isSavingAction = true;
+      _savingCandidateIds.add(candidate.uid);
     });
 
     try {
@@ -88,19 +85,19 @@ class _MatchingScreenState extends State<MatchingScreen> {
       if (!mounted) return;
 
       setState(() {
-        _isSavingAction = false;
+        _savingCandidateIds.remove(candidate.uid);
       });
     }
   }
 
-  String _formatCardId(String cardId) {
-    final card = _cardById[cardId];
+  String _initialFor(String value) {
+    final cleanValue = value.trim();
 
-    if (card == null) {
-      return cardId;
+    if (cleanValue.isEmpty) {
+      return '?';
     }
 
-    return '${card.countryName} #${card.number}';
+    return cleanValue[0].toUpperCase();
   }
 
   @override
@@ -120,7 +117,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
               if (snapshot.hasError) {
                 return _ScrollableMessage(
                   icon: Icons.info_outline,
-                  title: 'No se pudo cargar Descubrir',
+                  title: 'No se pudo calcular matching',
                   message: snapshot.error.toString().replaceFirst(
                     'Exception: ',
                     '',
@@ -134,7 +131,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
               if (matches.isEmpty) {
                 return _ScrollableMessage(
                   icon: Icons.people_outline,
-                  title: 'Todavía no hay perfiles por descubrir',
+                  title: 'Todavía no hay candidatos',
                   message:
                       'Necesitas otros usuarios visibles en tu misma comuna con faltantes o repetidas compatibles.',
                   onRefresh: _refresh,
@@ -151,18 +148,18 @@ class _MatchingScreenState extends State<MatchingScreen> {
                     for (final candidate in matches)
                       _MatchCandidateCard(
                         candidate: candidate,
-                        formatCardId: _formatCardId,
-                        isSavingAction: _isSavingAction,
-                        onDislike: () {
-                          return _saveAction(
-                            candidate: candidate,
-                            action: 'dislike',
-                          );
-                        },
+                        isSaving: _savingCandidateIds.contains(candidate.uid),
+                        initial: _initialFor(candidate.displayName),
                         onLike: () {
                           return _saveAction(
                             candidate: candidate,
                             action: 'like',
+                          );
+                        },
+                        onDislike: () {
+                          return _saveAction(
+                            candidate: candidate,
+                            action: 'dislike',
                           );
                         },
                       ),
@@ -186,9 +183,8 @@ class _MatchingInfoCard extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Text(
-          'Mostrando usuarios visibles de tu misma comuna con láminas compatibles. '
-          'Da Like si quieres intentar hacer match. La descripción y el contacto '
-          'deben mostrarse recién cuando ambos usuarios se den Like.',
+          'Aquí solo ves cantidades de compatibilidad. '
+          'Las láminas específicas, descripción y contacto se muestran recién después de un match mutuo.',
         ),
       ),
     );
@@ -198,106 +194,105 @@ class _MatchingInfoCard extends StatelessWidget {
 class _MatchCandidateCard extends StatelessWidget {
   const _MatchCandidateCard({
     required this.candidate,
-    required this.formatCardId,
-    required this.isSavingAction,
-    required this.onDislike,
+    required this.isSaving,
+    required this.initial,
     required this.onLike,
+    required this.onDislike,
   });
 
   final MatchCandidate candidate;
-  final String Function(String cardId) formatCardId;
-  final bool isSavingAction;
-  final Future<void> Function() onDislike;
+  final bool isSaving;
+  final String initial;
   final Future<void> Function() onLike;
-
-  String _initial() {
-    final name = candidate.displayName.trim();
-
-    if (name.isEmpty) {
-      return '?';
-    }
-
-    return name.characters.first.toUpperCase();
-  }
+  final Future<void> Function() onDislike;
 
   @override
   Widget build(BuildContext context) {
-    final compatibility = candidate.hasTwoWayMatch
-        ? 'intercambio posible'
-        : 'coincidencia parcial';
+    final matchType = candidate.hasTwoWayMatch
+        ? 'Intercambio posible'
+        : 'Coincidencia parcial';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ExpansionTile(
-        leading: CircleAvatar(child: Text(_initial())),
-        title: Text(candidate.displayName),
-        subtitle: Text(
-          '${candidate.comuna.isEmpty ? 'Sin comuna' : candidate.comuna} · Compatibilidad: $compatibility',
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           children: [
-            Text(
-              candidate.totalMatchCount.toString(),
-              style: Theme.of(context).textTheme.titleMedium,
+            Row(
+              children: [
+                CircleAvatar(child: Text(initial)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        candidate.displayName,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${candidate.comuna.isEmpty ? 'Sin comuna' : candidate.comuna} · $matchType',
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  children: [
+                    Text(
+                      candidate.totalMatchCount.toString(),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const Text('total'),
+                  ],
+                ),
+              ],
             ),
-            const Text('compat.'),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _CountCard(
+                    label: 'Tú puedes darle',
+                    value: candidate.iCanGiveCount,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _CountCard(
+                    label: 'Puede darte',
+                    value: candidate.theyCanGiveCount,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'El detalle exacto de las láminas se desbloquea solo si ambos se dan like.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: isSaving ? null : onDislike,
+                    icon: const Icon(Icons.close),
+                    label: const Text('Dislike'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: isSaving ? null : onLike,
+                    icon: const Icon(Icons.favorite),
+                    label: const Text('Like'),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _CountCard(
-                  label: 'Tú puedes darle',
-                  value: candidate.iCanGiveCount,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _CountCard(
-                  label: 'Puede darte',
-                  value: candidate.theyCanGiveCount,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _CardIdSection(
-            title: 'Láminas que tú puedes ofrecerle',
-            emptyText: 'No tienes repetidas que le falten.',
-            cardIds: candidate.iCanGiveIds,
-            formatCardId: formatCardId,
-          ),
-          const SizedBox(height: 12),
-          _CardIdSection(
-            title: 'Láminas que esa persona puede ofrecerte',
-            emptyText: 'Esa persona no tiene repetidas que te falten.',
-            cardIds: candidate.theyCanGiveIds,
-            formatCardId: formatCardId,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: isSavingAction ? null : onDislike,
-                  icon: const Icon(Icons.close),
-                  label: const Text('Dislike'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: isSavingAction ? null : onLike,
-                  icon: const Icon(Icons.favorite),
-                  label: const Text('Like'),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -322,49 +317,6 @@ class _CountCard extends StatelessWidget {
           Text(value.toString(), style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 4),
           Text(label, textAlign: TextAlign.center),
-        ],
-      ),
-    );
-  }
-}
-
-class _CardIdSection extends StatelessWidget {
-  const _CardIdSection({
-    required this.title,
-    required this.emptyText,
-    required this.cardIds,
-    required this.formatCardId,
-  });
-
-  final String title;
-  final String emptyText;
-  final List<String> cardIds;
-  final String Function(String cardId) formatCardId;
-
-  @override
-  Widget build(BuildContext context) {
-    final sortedIds = [...cardIds];
-
-    sortedIds.sort((a, b) => formatCardId(a).compareTo(formatCardId(b)));
-
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
-          if (sortedIds.isEmpty)
-            Text(emptyText)
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final cardId in sortedIds)
-                  Chip(label: Text(formatCardId(cardId))),
-              ],
-            ),
         ],
       ),
     );

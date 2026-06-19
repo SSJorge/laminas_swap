@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../data/album_catalog.dart';
 import '../models/match_candidate.dart';
 import '../services/matching_repository.dart';
 
@@ -18,8 +17,6 @@ class _ReceivedLikesScreenState extends State<ReceivedLikesScreen> {
   late Future<List<MatchCandidate>> _receivedLikesFuture;
 
   final Set<String> _savingCandidateIds = <String>{};
-
-  final _cardById = {for (final card in allCardDefinitions) card.id: card};
 
   @override
   void initState() {
@@ -95,16 +92,6 @@ class _ReceivedLikesScreenState extends State<ReceivedLikesScreen> {
     }
   }
 
-  String _formatCardId(String cardId) {
-    final card = _cardById[cardId];
-
-    if (card == null) {
-      return cardId;
-    }
-
-    return '${card.countryName} #${card.number}';
-  }
-
   String _initialFor(String value) {
     final cleanValue = value.trim();
 
@@ -164,7 +151,6 @@ class _ReceivedLikesScreenState extends State<ReceivedLikesScreen> {
                       _ReceivedLikeCard(
                         candidate: candidate,
                         isSaving: _savingCandidateIds.contains(candidate.uid),
-                        formatCardId: _formatCardId,
                         initial: _initialFor(candidate.displayName),
                         onLike: () {
                           return _saveAction(
@@ -199,8 +185,8 @@ class _ReceivedLikesInfoCard extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Text(
-          'Estas personas ya te dieron like. Si tú también les das like, '
-          'se crea un match y recién ahí se desbloquea su descripción/contacto.',
+          'Estas personas ya te dieron like. Antes de responder solo ves la cantidad de láminas compatibles. '
+          'Si tú también les das like, se crea un match y se desbloquea el detalle.',
         ),
       ),
     );
@@ -211,7 +197,6 @@ class _ReceivedLikeCard extends StatelessWidget {
   const _ReceivedLikeCard({
     required this.candidate,
     required this.isSaving,
-    required this.formatCardId,
     required this.initial,
     required this.onLike,
     required this.onDislike,
@@ -219,7 +204,6 @@ class _ReceivedLikeCard extends StatelessWidget {
 
   final MatchCandidate candidate;
   final bool isSaving;
-  final String Function(String cardId) formatCardId;
   final String initial;
   final Future<void> Function() onLike;
   final Future<void> Function() onDislike;
@@ -232,76 +216,85 @@ class _ReceivedLikeCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ExpansionTile(
-        leading: CircleAvatar(child: Text(initial)),
-        title: Text(candidate.displayName),
-        subtitle: Text(
-          '${candidate.comuna.isEmpty ? 'Sin comuna' : candidate.comuna} · $matchType',
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           children: [
-            Text(
-              candidate.totalMatchCount.toString(),
-              style: Theme.of(context).textTheme.titleMedium,
+            Row(
+              children: [
+                CircleAvatar(child: Text(initial)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        candidate.displayName,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${candidate.comuna.isEmpty ? 'Sin comuna' : candidate.comuna} · $matchType',
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  children: [
+                    Text(
+                      candidate.totalMatchCount.toString(),
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const Text('total'),
+                  ],
+                ),
+              ],
             ),
-            const Text('matches'),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _CountCard(
+                    label: 'Tú puedes darle',
+                    value: candidate.iCanGiveCount,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _CountCard(
+                    label: 'Puede darte',
+                    value: candidate.theyCanGiveCount,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'El detalle exacto de las láminas se desbloquea solo si devuelves el like.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: isSaving ? null : onDislike,
+                    icon: const Icon(Icons.close),
+                    label: const Text('Dislike'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: isSaving ? null : onLike,
+                    icon: const Icon(Icons.favorite),
+                    label: const Text('Like de vuelta'),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
-        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _CountCard(
-                  label: 'Tú puedes darle',
-                  value: candidate.iCanGiveCount,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _CountCard(
-                  label: 'Puede darte',
-                  value: candidate.theyCanGiveCount,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _CardIdSection(
-            title: 'Láminas que tú puedes ofrecerle',
-            emptyText: 'No tienes repetidas que le falten.',
-            cardIds: candidate.iCanGiveIds,
-            formatCardId: formatCardId,
-          ),
-          const SizedBox(height: 12),
-          _CardIdSection(
-            title: 'Láminas que esa persona puede ofrecerte',
-            emptyText: 'Esa persona no tiene repetidas que te falten.',
-            cardIds: candidate.theyCanGiveIds,
-            formatCardId: formatCardId,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: isSaving ? null : onDislike,
-                  icon: const Icon(Icons.close),
-                  label: const Text('Dislike'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: isSaving ? null : onLike,
-                  icon: const Icon(Icons.favorite),
-                  label: const Text('Like de vuelta'),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -326,49 +319,6 @@ class _CountCard extends StatelessWidget {
           Text(value.toString(), style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 4),
           Text(label, textAlign: TextAlign.center),
-        ],
-      ),
-    );
-  }
-}
-
-class _CardIdSection extends StatelessWidget {
-  const _CardIdSection({
-    required this.title,
-    required this.emptyText,
-    required this.cardIds,
-    required this.formatCardId,
-  });
-
-  final String title;
-  final String emptyText;
-  final List<String> cardIds;
-  final String Function(String cardId) formatCardId;
-
-  @override
-  Widget build(BuildContext context) {
-    final sortedIds = [...cardIds];
-
-    sortedIds.sort((a, b) => formatCardId(a).compareTo(formatCardId(b)));
-
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
-          if (sortedIds.isEmpty)
-            Text(emptyText)
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final cardId in sortedIds)
-                  Chip(label: Text(formatCardId(cardId))),
-              ],
-            ),
         ],
       ),
     );
