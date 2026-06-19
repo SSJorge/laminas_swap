@@ -2,13 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../models/match_candidate.dart';
-import '../services/matching_repository.dart';
 import '../data/daily_limits.dart';
-import '../widgets/daily_limits_card.dart';
+import '../models/match_candidate.dart';
 import '../models/user_entitlements.dart';
-import '../services/daily_quota_repository.dart';
+import '../services/matching_repository.dart';
 import '../widgets/ad_placeholder_card.dart';
+import '../widgets/daily_limits_card.dart';
 
 class MatchingScreen extends StatefulWidget {
   const MatchingScreen({super.key});
@@ -107,13 +106,25 @@ class _MatchingScreenState extends State<MatchingScreen> {
     return cleanValue[0].toUpperCase();
   }
 
+  Stream<UserEntitlements> _watchEntitlements(String uid) {
+    return FirebaseFirestore.instance
+        .collection('userEntitlements')
+        .doc(uid)
+        .snapshots()
+        .map((snapshot) {
+          return UserEntitlements.fromMap(snapshot.data());
+        });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Descubrir')),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 820),
+          constraints: const BoxConstraints(maxWidth: 920),
           child: FutureBuilder<List<MatchCandidate>>(
             future: _matchesFuture,
             builder: (context, snapshot) {
@@ -145,55 +156,68 @@ class _MatchingScreenState extends State<MatchingScreen> {
                 );
               }
 
-              return RefreshIndicator(
-                onRefresh: _refresh,
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    const _MatchingInfoCard(),
-                    const SizedBox(height: 12),
-                    const DailyLimitsCard(
-                      types: [DailyLimitType.like, DailyLimitType.dislike],
-                    ),
-                    StreamBuilder<UserEntitlements>(
-                      stream: DailyQuotaRepository(FirebaseFirestore.instance)
-                          .watchEntitlements(
-                            FirebaseAuth.instance.currentUser!.uid,
-                          ),
-                      builder: (context, entitlementSnapshot) {
-                        final entitlements =
-                            entitlementSnapshot.data ?? UserEntitlements.free();
+              if (user == null) {
+                return _ScrollableMessage(
+                  icon: Icons.info_outline,
+                  title: 'No hay usuario autenticado',
+                  message: 'Inicia sesión nuevamente.',
+                  onRefresh: _refresh,
+                );
+              }
 
-                        if (entitlements.adsRemoved) {
-                          return const SizedBox.shrink();
-                        }
+              return StreamBuilder<UserEntitlements>(
+                stream: _watchEntitlements(user.uid),
+                builder: (context, entitlementsSnapshot) {
+                  final entitlements =
+                      entitlementsSnapshot.data ?? UserEntitlements.free();
 
-                        return const Column(
-                          children: [AdPlaceholderCard(), SizedBox(height: 12)],
-                        );
-                      },
+                  final showAds = !entitlements.adsRemoved;
+                  final candidateSlots = showAds ? 3 : 4;
+                  final visibleMatches = matches.take(candidateSlots).toList();
+
+                  return RefreshIndicator(
+                    onRefresh: _refresh,
+                    child: ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        const _MatchingInfoCard(),
+                        const SizedBox(height: 12),
+                        const DailyLimitsCard(
+                          types: [DailyLimitType.like, DailyLimitType.dislike],
+                        ),
+                        const SizedBox(height: 12),
+                        _DiscoverGrid(
+                          candidates: visibleMatches,
+                          showAdSlot: showAds,
+                          isSavingCandidate: (candidate) {
+                            return _savingCandidateIds.contains(candidate.uid);
+                          },
+                          initialFor: _initialFor,
+                          onLike: (candidate) {
+                            return _saveAction(
+                              candidate: candidate,
+                              action: 'like',
+                            );
+                          },
+                          onDislike: (candidate) {
+                            return _saveAction(
+                              candidate: candidate,
+                              action: 'dislike',
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          showAds
+                              ? 'Gratis: se muestran hasta 3 usuarios y 1 espacio de anuncio.'
+                              : 'Sin anuncios: se muestran hasta 4 usuarios.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    for (final candidate in matches)
-                      _MatchCandidateCard(
-                        candidate: candidate,
-                        isSaving: _savingCandidateIds.contains(candidate.uid),
-                        initial: _initialFor(candidate.displayName),
-                        onLike: () {
-                          return _saveAction(
-                            candidate: candidate,
-                            action: 'like',
-                          );
-                        },
-                        onDislike: () {
-                          return _saveAction(
-                            candidate: candidate,
-                            action: 'dislike',
-                          );
-                        },
-                      ),
-                  ],
-                ),
+                  );
+                },
               );
             },
           ),
@@ -220,6 +244,66 @@ class _MatchingInfoCard extends StatelessWidget {
   }
 }
 
+class _DiscoverGrid extends StatelessWidget {
+  const _DiscoverGrid({
+    required this.candidates,
+    required this.showAdSlot,
+    required this.isSavingCandidate,
+    required this.initialFor,
+    required this.onLike,
+    required this.onDislike,
+  });
+
+  final List<MatchCandidate> candidates;
+  final bool showAdSlot;
+  final bool Function(MatchCandidate candidate) isSavingCandidate;
+  final String Function(String value) initialFor;
+  final Future<void> Function(MatchCandidate candidate) onLike;
+  final Future<void> Function(MatchCandidate candidate) onDislike;
+
+  @override
+  Widget build(BuildContext context) {
+    final itemCount = candidates.length + (showAdSlot ? 1 : 0);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 720;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: itemCount,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: isWide ? 2 : 1,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: isWide ? 1.25 : 1.75,
+          ),
+          itemBuilder: (context, index) {
+            if (showAdSlot && index == itemCount - 1) {
+              return const AdPlaceholderCard();
+            }
+
+            final candidate = candidates[index];
+
+            return _MatchCandidateCard(
+              candidate: candidate,
+              isSaving: isSavingCandidate(candidate),
+              initial: initialFor(candidate.displayName),
+              onLike: () {
+                return onLike(candidate);
+              },
+              onDislike: () {
+                return onDislike(candidate);
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
 class _MatchCandidateCard extends StatelessWidget {
   const _MatchCandidateCard({
     required this.candidate,
@@ -242,9 +326,9 @@ class _MatchCandidateCard extends StatelessWidget {
         : 'Coincidencia parcial';
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           children: [
             Row(
@@ -257,11 +341,15 @@ class _MatchCandidateCard extends StatelessWidget {
                     children: [
                       Text(
                         candidate.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 2),
                       Text(
                         '${candidate.comuna.isEmpty ? 'Sin comuna' : candidate.comuna} · $matchType',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -277,7 +365,7 @@ class _MatchCandidateCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -286,7 +374,7 @@ class _MatchCandidateCard extends StatelessWidget {
                     value: candidate.iCanGiveCount,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: _CountCard(
                     label: 'Puede darte',
@@ -295,12 +383,12 @@ class _MatchCandidateCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const Spacer(),
             const Text(
-              'El detalle exacto de las láminas se desbloquea solo si ambos se dan like.',
+              'Detalle después del match mutuo.',
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
@@ -310,7 +398,7 @@ class _MatchCandidateCard extends StatelessWidget {
                     label: const Text('Dislike'),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: isSaving ? null : onLike,
@@ -336,7 +424,7 @@ class _CountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(12),
