@@ -82,9 +82,11 @@ class _ReceivedLikesScreenState extends State<ReceivedLikesScreen> {
     } catch (e) {
       if (!mounted) return;
 
+      final message = e.toString().replaceFirst('Exception: ', '');
+
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error guardando acción: $e')));
+      ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
       if (!mounted) return;
 

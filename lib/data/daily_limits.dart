@@ -14,7 +14,7 @@ class DailyLimitDefinition {
 
 // Edita estos números cuando quieras cambiar los límites.
 const int dailyLikeLimit = 3;
-const int dailyDislikeLimit = 20;
+const int dailyDislikeLimit = 3;
 const int dailyUserSearchLimit = 3;
 const int dailyCommuneChangeLimit = 3;
 
