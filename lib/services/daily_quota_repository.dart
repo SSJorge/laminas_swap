@@ -86,21 +86,29 @@ class DailyQuotaRepository {
     final usageRef = _todayRef(uid);
     final now = FieldValue.serverTimestamp();
 
+    final usageDoc = await usageRef.get();
+    final used = DailyUsage.fromMap(
+      dayKey: dayKey,
+      data: usageDoc.data(),
+    ).used(type);
+
+    if (used >= definition.limit) {
+      throw Exception(
+        'Ya usaste tus ${definition.label.toLowerCase()} de hoy.',
+      );
+    }
+
     await _db.runTransaction((transaction) async {
-      final usageDoc = await transaction.get(usageRef);
-      final data = usageDoc.data();
+      final freshUsageDoc = await transaction.get(usageRef);
 
-      final used = DailyUsage.fromMap(dayKey: dayKey, data: data).used(type);
-
-      if (used >= definition.limit) {
-        throw Exception(
-          'Ya usaste tus ${definition.label.toLowerCase()} de hoy.',
-        );
-      }
+      final freshUsed = DailyUsage.fromMap(
+        dayKey: dayKey,
+        data: freshUsageDoc.data(),
+      ).used(type);
 
       transaction.set(usageRef, {
         'dayKey': dayKey,
-        definition.field: used + 1,
+        definition.field: freshUsed + 1,
         'updatedAt': now,
       }, SetOptions(merge: true));
     });

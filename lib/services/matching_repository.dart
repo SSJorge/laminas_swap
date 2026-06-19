@@ -331,26 +331,34 @@ class MatchingRepository {
         .collection('dailyUsage')
         .doc(dayKey);
 
+    final existingActionDoc = await actionRef.get();
+
+    if (existingActionDoc.exists) {
+      throw Exception('Ya respondiste a este perfil.');
+    }
+
+    final usageDoc = await usageRef.get();
+    final used = _readInt(usageDoc.data()?[quotaDefinition.field]);
+
+    if (used >= quotaDefinition.limit) {
+      throw Exception(
+        'Ya usaste tus ${quotaDefinition.label.toLowerCase()} de hoy.',
+      );
+    }
+
     await _db.runTransaction((transaction) async {
-      final actionDoc = await transaction.get(actionRef);
-      final usageDoc = await transaction.get(usageRef);
+      final freshActionDoc = await transaction.get(actionRef);
+      final freshUsageDoc = await transaction.get(usageRef);
 
-      if (actionDoc.exists) {
-        throw Exception('Ya respondiste a este perfil.');
+      if (freshActionDoc.exists) {
+        return;
       }
 
-      final usageData = usageDoc.data();
-      final used = _readInt(usageData?[quotaDefinition.field]);
-
-      if (used >= quotaDefinition.limit) {
-        throw Exception(
-          'Ya usaste tus ${quotaDefinition.label.toLowerCase()} de hoy.',
-        );
-      }
+      final freshUsed = _readInt(freshUsageDoc.data()?[quotaDefinition.field]);
 
       transaction.set(usageRef, {
         'dayKey': dayKey,
-        quotaDefinition.field: used + 1,
+        quotaDefinition.field: freshUsed + 1,
         'updatedAt': now,
       }, SetOptions(merge: true));
 

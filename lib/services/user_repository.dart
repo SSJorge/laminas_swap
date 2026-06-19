@@ -156,61 +156,64 @@ class UserRepository {
     final privateProfileRef = _db.collection('privateProfiles').doc(user.uid);
     final newUsernameRef = _db.collection('usernames').doc(cleanNameKey);
 
+    DocumentReference<Map<String, dynamic>>? dailyUsageRef;
+    Map<String, dynamic>? dailyUsageUpdate;
+
+    final currentUserDoc = await userRef.get();
+    final currentUserData = currentUserDoc.data() ?? <String, dynamic>{};
+
+    final location = currentUserData['location'];
+
+    String oldComunaKey = '';
+
+    if (location is Map) {
+      final rawOldComunaKey = location['comunaKey'];
+
+      if (rawOldComunaKey is String) {
+        oldComunaKey = rawOldComunaKey;
+      }
+    }
+
+    final shouldConsumeCommuneChange =
+        oldComunaKey.isNotEmpty && oldComunaKey != cleanComunaKey;
+
+    if (shouldConsumeCommuneChange) {
+      final quotaDefinition = dailyLimitDefinitionFor(
+        DailyLimitType.communeChange,
+      );
+
+      final dayKey = todayUsageDocId();
+
+      dailyUsageRef = _db
+          .collection('users')
+          .doc(user.uid)
+          .collection('dailyUsage')
+          .doc(dayKey);
+
+      final dailyUsageDoc = await dailyUsageRef.get();
+      final dailyUsageData = dailyUsageDoc.data();
+
+      final used = _readInt(dailyUsageData?[quotaDefinition.field]);
+
+      if (used >= quotaDefinition.limit) {
+        throw Exception(
+          'Ya usaste tus ${quotaDefinition.label.toLowerCase()} de hoy.',
+        );
+      }
+
+      dailyUsageUpdate = {
+        'dayKey': dayKey,
+        quotaDefinition.field: used + 1,
+        'updatedAt': now,
+      };
+    }
+
     await _db.runTransaction((transaction) async {
       final userDoc = await transaction.get(userRef);
       final newUsernameDoc = await transaction.get(newUsernameRef);
 
       final userData = userDoc.data() ?? <String, dynamic>{};
       final oldNameKey = userData['displayNameKey'] as String?;
-      //limite
-      final location = userData['location'];
-
-      String oldComunaKey = '';
-
-      if (location is Map) {
-        final rawOldComunaKey = location['comunaKey'];
-
-        if (rawOldComunaKey is String) {
-          oldComunaKey = rawOldComunaKey;
-        }
-      }
-
-      final shouldConsumeCommuneChange =
-          oldComunaKey.isNotEmpty && oldComunaKey != cleanComunaKey;
-
-      DocumentReference<Map<String, dynamic>>? dailyUsageRef;
-      Map<String, dynamic>? dailyUsageUpdate;
-
-      if (shouldConsumeCommuneChange) {
-        final quotaDefinition = dailyLimitDefinitionFor(
-          DailyLimitType.communeChange,
-        );
-
-        final dayKey = todayUsageDocId();
-
-        dailyUsageRef = _db
-            .collection('users')
-            .doc(user.uid)
-            .collection('dailyUsage')
-            .doc(dayKey);
-
-        final dailyUsageDoc = await transaction.get(dailyUsageRef);
-        final dailyUsageData = dailyUsageDoc.data();
-
-        final used = _readInt(dailyUsageData?[quotaDefinition.field]);
-
-        if (used >= quotaDefinition.limit) {
-          throw Exception(
-            'Ya usaste tus ${quotaDefinition.label.toLowerCase()} de hoy.',
-          );
-        }
-
-        dailyUsageUpdate = {
-          'dayKey': dayKey,
-          quotaDefinition.field: used + 1,
-          'updatedAt': now,
-        };
-      } //limite
 
       if (newUsernameDoc.exists) {
         final ownerUid = newUsernameDoc.data()?['uid'];
