@@ -4,24 +4,32 @@ class ConfirmedMatch {
   const ConfirmedMatch({
     required this.candidate,
     required this.description,
-    required this.contactType,
-    required this.contactValue,
-    required this.contactVisible,
+    required this.myContactSharedWithThem,
+    required this.theirContactSharedWithMe,
+    required this.theirContactType,
+    required this.theirContactValue,
   });
 
   final MatchCandidate candidate;
   final String description;
-  final String contactType;
-  final String contactValue;
-  final bool contactVisible;
+
+  /// True si YO ya le mostré mi contacto a esta persona.
+  final bool myContactSharedWithThem;
+
+  /// True si ESTA PERSONA ya me mostró su contacto a mí.
+  final bool theirContactSharedWithMe;
+
+  final String theirContactType;
+  final String theirContactValue;
 
   bool get hasDescription => description.trim().isNotEmpty;
 
-  bool get hasVisibleContact =>
-      contactVisible && contactValue.trim().isNotEmpty;
+  bool get hasVisibleContact {
+    return theirContactSharedWithMe && theirContactValue.trim().isNotEmpty;
+  }
 
   String get contactLabel {
-    if (contactType == 'phone') {
+    if (theirContactType == 'phone') {
       return 'Número';
     }
 

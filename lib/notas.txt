@@ -7,14 +7,25 @@ flutter build web
 firebase deploy --only hosting
 
 
-Día Premium 2:
-- botón “Quiero premium”
-- pantalla de planes
-- premium manual por Firestore
+Reportar usuario
+Motivo:
+- contacto inapropiado
+- estafa
+- spam
+- perfil falso
+- otro
 
-Y más adelante:
+Guardar en:
 
-Día Premium 3:
-- 4 espacios por pantalla
-- free: 3 usuarios + 1 anuncio
-- premium: 4 usuarios reales
+reports/{reportId}
+  reporterUid
+  reportedUid
+  reason
+  details
+  createdAt
+  status: "open"
+
+  2. Bloquear usuario
+  3. Ocultar perfil
+  4. Eliminar cuenta
+  5. Política de privacidad y términos simples

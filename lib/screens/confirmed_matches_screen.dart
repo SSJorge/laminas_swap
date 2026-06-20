@@ -131,6 +131,12 @@ class _ConfirmedMatchesScreenState extends State<ConfirmedMatchesScreen> {
                         initial: _initialFor(
                           confirmedMatch.candidate.displayName,
                         ),
+                        onShareMyContact: () {
+                          return _shareMyContact(confirmedMatch.candidate.uid);
+                        },
+                        onHideMyContact: () {
+                          return _hideMyContact(confirmedMatch.candidate.uid);
+                        },
                         onCopyDescription: confirmedMatch.hasDescription
                             ? () {
                                 return _copyText(
@@ -144,7 +150,7 @@ class _ConfirmedMatchesScreenState extends State<ConfirmedMatchesScreen> {
                             ? () {
                                 return _copyText(
                                   context,
-                                  confirmedMatch.contactValue,
+                                  confirmedMatch.theirContactValue,
                                   'Contacto copiado.',
                                 );
                               }
@@ -158,6 +164,72 @@ class _ConfirmedMatchesScreenState extends State<ConfirmedMatchesScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _shareMyContact(String targetUid) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return;
+    }
+
+    try {
+      await _matchingRepository.shareMyContactWith(
+        ownerUid: user.uid,
+        viewerUid: targetUid,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tu contacto ahora está visible para esta persona.'),
+        ),
+      );
+
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+
+      final message = e.toString().replaceFirst('Exception: ', '');
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  Future<void> _hideMyContact(String targetUid) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return;
+    }
+
+    try {
+      await _matchingRepository.hideMyContactFrom(
+        ownerUid: user.uid,
+        viewerUid: targetUid,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tu contacto dejó de estar visible para esta persona.'),
+        ),
+      );
+
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+
+      final message = e.toString().replaceFirst('Exception: ', '');
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
   }
 }
 
@@ -183,6 +255,8 @@ class _ConfirmedMatchCard extends StatelessWidget {
     required this.confirmedMatch,
     required this.formatCardId,
     required this.initial,
+    required this.onShareMyContact,
+    required this.onHideMyContact,
     required this.onCopyDescription,
     required this.onCopyContact,
   });
@@ -192,6 +266,8 @@ class _ConfirmedMatchCard extends StatelessWidget {
   final String initial;
   final Future<void> Function()? onCopyDescription;
   final Future<void> Function()? onCopyContact;
+  final Future<void> Function() onShareMyContact;
+  final Future<void> Function() onHideMyContact;
 
   @override
   Widget build(BuildContext context) {
@@ -261,16 +337,39 @@ class _ConfirmedMatchCard extends StatelessWidget {
           if (confirmedMatch.hasVisibleContact)
             _CopyableInfoBlock(
               title: confirmedMatch.contactLabel,
-              value: confirmedMatch.contactValue,
+              value: confirmedMatch.theirContactValue,
               copyLabel: 'Copiar contacto',
               onCopy: onCopyContact,
             )
           else
             const ListTile(
               leading: Icon(Icons.lock_outline),
-              title: Text('Contacto privado'),
+              title: Text('Contacto no compartido'),
               subtitle: Text(
-                'Esta persona no permite mostrar su contacto automáticamente.',
+                'Esta persona todavía no te ha mostrado su contacto.',
+              ),
+            ),
+          const SizedBox(height: 12),
+          if (confirmedMatch.myContactSharedWithThem)
+            ListTile(
+              leading: const Icon(Icons.visibility),
+              title: const Text('Tu contacto está visible para esta persona'),
+              subtitle: const Text(
+                'Puedes ocultarlo si ya no quieres que lo vea desde la app.',
+              ),
+              trailing: OutlinedButton.icon(
+                onPressed: onHideMyContact,
+                icon: const Icon(Icons.visibility_off),
+                label: const Text('Ocultar'),
+              ),
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onShareMyContact,
+                icon: const Icon(Icons.visibility),
+                label: const Text('Mostrar mi contacto a esta persona'),
               ),
             ),
         ],

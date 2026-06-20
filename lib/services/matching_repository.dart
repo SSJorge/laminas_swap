@@ -163,13 +163,43 @@ class MatchingRepository {
 
       final privateData = privateProfileDoc.data() ?? <String, dynamic>{};
 
+      final myShareDoc = await _db
+          .collection('contactShares')
+          .doc(uid)
+          .collection('allowedViewers')
+          .doc(targetUid)
+          .get();
+
+      final theirShareDoc = await _db
+          .collection('contactShares')
+          .doc(targetUid)
+          .collection('allowedViewers')
+          .doc(uid)
+          .get();
+
+      var theirContactType = '';
+      var theirContactValue = '';
+
+      if (theirShareDoc.exists) {
+        final theirContactDoc = await _db
+            .collection('privateContacts')
+            .doc(targetUid)
+            .get();
+
+        final theirContactData = theirContactDoc.data() ?? <String, dynamic>{};
+
+        theirContactType = _readString(theirContactData['contactType']);
+        theirContactValue = _readString(theirContactData['contactValue']);
+      }
+
       confirmedMatches.add(
         ConfirmedMatch(
           candidate: candidate,
           description: _readString(privateData['description']),
-          contactType: _readString(privateData['contactType']),
-          contactValue: _readString(privateData['contactValue']),
-          contactVisible: privateData['contactVisible'] == true,
+          myContactSharedWithThem: myShareDoc.exists,
+          theirContactSharedWithMe: theirShareDoc.exists,
+          theirContactType: theirContactType,
+          theirContactValue: theirContactValue,
         ),
       );
     }
@@ -385,6 +415,46 @@ class MatchingRepository {
         'updatedAt': now,
       });
     });
+  }
+
+  Future<void> shareMyContactWith({
+    required String ownerUid,
+    required String viewerUid,
+  }) async {
+    if (ownerUid == viewerUid) {
+      throw Exception('No puedes compartir contacto contigo mismo.');
+    }
+
+    final now = FieldValue.serverTimestamp();
+
+    final shareRef = _db
+        .collection('contactShares')
+        .doc(ownerUid)
+        .collection('allowedViewers')
+        .doc(viewerUid);
+
+    await shareRef.set({
+      'ownerUid': ownerUid,
+      'viewerUid': viewerUid,
+      'createdAt': now,
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> hideMyContactFrom({
+    required String ownerUid,
+    required String viewerUid,
+  }) async {
+    if (ownerUid == viewerUid) {
+      throw Exception('No puedes ocultarte contacto a ti mismo.');
+    }
+
+    final shareRef = _db
+        .collection('contactShares')
+        .doc(ownerUid)
+        .collection('allowedViewers')
+        .doc(viewerUid);
+
+    await shareRef.delete();
   }
 
   int _compareMatches(MatchCandidate a, MatchCandidate b) {

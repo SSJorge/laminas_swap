@@ -20,6 +20,10 @@ service cloud.firestore {
       return signedIn() && hasLiked(uidA, uidB) && hasLiked(uidB, uidA);
     }
 
+    function hasContactShare(ownerUid, viewerUid) {
+      return exists(/databases/$(database)/documents/contactShares/$(ownerUid)/allowedViewers/$(viewerUid));
+    }
+
     function publicProfileHasOnlyAllowedFields() {
       return request.resource.data.keys().hasOnly([
         'displayName',
@@ -57,9 +61,6 @@ service cloud.firestore {
     function privateProfileHasOnlyAllowedFields() {
       return request.resource.data.keys().hasOnly([
         'description',
-        'contactType',
-        'contactValue',
-        'contactVisible',
         'updatedAt'
       ]);
     }
@@ -69,14 +70,34 @@ service cloud.firestore {
         && request.resource.data.description.size() <= 200;
     }
 
-    function privateProfileHasValidContact() {
+    function privateProfileExistingHasNoContactFields() {
+      return !resource.data.keys().hasAny([
+        'contactType',
+        'contactValue',
+        'contactVisible',
+        'email',
+        'phone',
+        'telefono',
+        'whatsapp',
+        'instagram'
+      ]);
+    }
+
+    function privateContactHasOnlyAllowedFields() {
+      return request.resource.data.keys().hasOnly([
+        'contactType',
+        'contactValue',
+        'updatedAt'
+      ]);
+    }
+
+    function privateContactHasValidContact() {
       return (
         request.resource.data.contactType == 'email'
         || request.resource.data.contactType == 'phone'
       )
       && request.resource.data.contactValue is string
-      && request.resource.data.contactValue.size() > 0
-      && request.resource.data.contactVisible is bool;
+      && request.resource.data.contactValue.size() > 0;
     }
 
     function usernameHasOnlyAllowedFields() {
@@ -125,6 +146,19 @@ service cloud.firestore {
         'communeChangesUsed',
         'updatedAt'
       ]);
+    }
+
+    function contactShareHasOnlyAllowedFields() {
+      return request.resource.data.keys().hasOnly([
+        'ownerUid',
+        'viewerUid',
+        'createdAt'
+      ]);
+    }
+
+    function contactShareIsValid(ownerUid, viewerUid) {
+      return request.resource.data.ownerUid == ownerUid
+        && request.resource.data.viewerUid == viewerUid;
     }
 
     match /users/{uid} {
@@ -186,15 +220,45 @@ service cloud.firestore {
     }
 
     match /privateProfiles/{uid} {
-      allow read: if isOwner(uid) || hasMutualLike(request.auth.uid, uid);
+      allow read: if (isOwner(uid) || hasMutualLike(request.auth.uid, uid))
+        && privateProfileExistingHasNoContactFields();
 
       allow create, update: if isOwner(uid)
         && privateProfileHasOnlyAllowedFields()
-        && privateProfileHasValidDescription()
-        && privateProfileHasValidContact();
+        && privateProfileHasValidDescription();
 
       allow delete: if isOwner(uid);
     }
+
+    match /privateContacts/{uid} {
+      allow read: if isOwner(uid)
+        || (
+          signedIn()
+          && hasMutualLike(request.auth.uid, uid)
+          && hasContactShare(uid, request.auth.uid)
+        );
+
+      allow create, update: if isOwner(uid)
+        && privateContactHasOnlyAllowedFields()
+        && privateContactHasValidContact();
+
+      allow delete: if isOwner(uid);
+    }
+
+    match /contactShares/{ownerUid}/allowedViewers/{viewerUid} {
+      allow read: if signedIn()
+        && (
+          request.auth.uid == ownerUid
+          || request.auth.uid == viewerUid
+        );
+
+      allow create, update: if isOwner(ownerUid)
+        && contactShareHasOnlyAllowedFields()
+        && contactShareIsValid(ownerUid, viewerUid);
+
+      allow delete: if isOwner(ownerUid);
+    }
+
     match /userEntitlements/{uid} {
       allow read: if isOwner(uid);
 

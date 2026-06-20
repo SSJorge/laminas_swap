@@ -26,7 +26,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _selectedComuna = 'Quilpué';
   String _contactType = contactTypeEmail;
 
-  bool _contactVisible = false;
   bool _profileVisible = true;
   bool _isLoading = true;
   bool _isSaving = false;
@@ -70,7 +69,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _selectedRegionId = 'valparaiso';
         _selectedComuna = 'Quilpué';
         _contactType = contactTypeEmail;
-        _contactVisible = false;
         _profileVisible = true;
         _descriptionController.text = '';
         return;
@@ -78,7 +76,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       _displayNameController.text = data['displayName'] ?? '';
       _contactType = _safeContactType(data['contactType']);
-      _contactVisible = data['contactVisible'] == true;
       _profileVisible = data['profileVisible'] ?? true;
       _descriptionController.text = data['description'] ?? '';
 
@@ -147,7 +144,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         contactValue: _contactType == contactTypePhone
             ? _phoneDigitsController.text
             : user.email ?? '',
-        contactVisible: _contactVisible,
+        contactVisible: false,
         profileVisible: _profileVisible,
         description: _descriptionController.text,
       );
@@ -370,18 +367,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                SwitchListTile(
-                  value: _contactVisible,
-                  title: const Text('Mostrar contacto después del match'),
-                  subtitle: const Text(
-                    'La descripción se mostrará después del match. El contacto solo si activas esto.',
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _contactVisible = value;
-                    });
-                  },
-                ),
+                const _ContactVisibilityNotice(),
+                const SizedBox(height: 12),
                 SwitchListTile(
                   value: _profileVisible,
                   title: const Text('Perfil visible'),
@@ -420,6 +407,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ContactVisibilityNotice extends StatelessWidget {
+  const _ContactVisibilityNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.visibility_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Tu contacto solo será visible para las personas con match a las que tú decidas mostrárselo.',
+              ),
+            ),
+          ],
         ),
       ),
     );

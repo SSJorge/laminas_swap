@@ -34,6 +34,7 @@ class UserRepository {
     final usernameRef = _db.collection('usernames').doc(cleanNameKey);
     final publicProfileRef = _db.collection('publicProfiles').doc(user.uid);
     final privateProfileRef = _db.collection('privateProfiles').doc(user.uid);
+    final privateContactRef = _db.collection('privateContacts').doc(user.uid);
 
     await _db.runTransaction((transaction) async {
       final usernameDoc = await transaction.get(usernameRef);
@@ -95,11 +96,11 @@ class UserRepository {
         'profileVisible': true,
       });
 
-      transaction.set(privateProfileRef, {
-        'description': '',
+      transaction.set(privateProfileRef, {'description': '', 'updatedAt': now});
+
+      transaction.set(privateContactRef, {
         'contactType': contactTypeEmail,
         'contactValue': user.email ?? '',
-        'contactVisible': false,
         'updatedAt': now,
       });
     });
@@ -156,6 +157,7 @@ class UserRepository {
     final publicProfileRef = _db.collection('publicProfiles').doc(user.uid);
     final privateProfileRef = _db.collection('privateProfiles').doc(user.uid);
     final newUsernameRef = _db.collection('usernames').doc(cleanNameKey);
+    final privateContactRef = _db.collection('privateContacts').doc(user.uid);
 
     DocumentReference<Map<String, dynamic>>? dailyUsageRef;
     Map<String, dynamic>? dailyUsageUpdate;
@@ -295,9 +297,17 @@ class UserRepository {
 
       transaction.set(privateProfileRef, {
         'description': cleanDescription,
+        'updatedAt': now,
+
+        // Limpieza de campos antiguos.
+        'contactType': FieldValue.delete(),
+        'contactValue': FieldValue.delete(),
+        'contactVisible': FieldValue.delete(),
+      }, SetOptions(merge: true));
+
+      transaction.set(privateContactRef, {
         'contactType': cleanContactType,
         'contactValue': effectiveContactValue,
-        'contactVisible': contactVisible,
         'updatedAt': now,
       }, SetOptions(merge: true));
       if (dailyUsageRef != null && dailyUsageUpdate != null) {
