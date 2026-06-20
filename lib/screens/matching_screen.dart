@@ -8,6 +8,7 @@ import '../models/user_entitlements.dart';
 import '../services/matching_repository.dart';
 import '../widgets/ad_placeholder_card.dart';
 import '../widgets/daily_limits_card.dart';
+import '../widgets/report_user_button.dart';
 
 class MatchingScreen extends StatefulWidget {
   const MatchingScreen({super.key});
@@ -407,6 +408,15 @@ class _MatchCandidateCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ReportUserButton(
+                reportedUid: candidate.uid,
+                reportedDisplayName: candidate.displayName,
+                source: 'discover',
+              ),
             ),
           ],
         ),

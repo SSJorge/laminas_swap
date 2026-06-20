@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../data/album_catalog.dart';
 import '../models/confirmed_match.dart';
 import '../services/matching_repository.dart';
+import '../widgets/report_user_button.dart';
 
 class ConfirmedMatchesScreen extends StatefulWidget {
   const ConfirmedMatchesScreen({super.key});
@@ -372,6 +373,15 @@ class _ConfirmedMatchCard extends StatelessWidget {
                 label: const Text('Mostrar mi contacto a esta persona'),
               ),
             ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ReportUserButton(
+              reportedUid: candidate.uid,
+              reportedDisplayName: candidate.displayName,
+              source: 'confirmed_matches',
+            ),
+          ),
         ],
       ),
     );
