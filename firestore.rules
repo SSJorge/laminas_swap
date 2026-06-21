@@ -270,14 +270,14 @@ service cloud.firestore {
     }
 
     match /publicProfiles/{uid} {
-      allow read: if signedIn();
+  allow read: if signedIn();
 
-      allow create, update: if isOwner(uid)
-        && publicProfileHasOnlyAllowedFields()
-        && publicProfileHasNoPrivateFields();
+  allow create, update: if isOwner(uid)
+    && publicProfileHasOnlyAllowedFields()
+    && publicProfileHasNoPrivateFields();
 
-      allow delete: if false;
-    }
+  allow delete: if isOwner(uid);
+}
 
     match /privateProfiles/{uid} {
       allow read: if (isOwner(uid) || hasMutualLike(request.auth.uid, uid))
@@ -305,23 +305,31 @@ service cloud.firestore {
       allow delete: if isOwner(uid);
     }
 
-    match /contactShares/{ownerUid}/allowedViewers/{viewerUid} {
-      allow read: if signedIn()
-        && (
-          request.auth.uid == ownerUid
-          || request.auth.uid == viewerUid
-        );
+    match /contactShares/{ownerUid} {
+  allow read: if isOwner(ownerUid);
 
-      allow create, update: if isOwner(ownerUid)
-        && contactShareHasOnlyAllowedFields()
-        && contactShareIsValid(ownerUid, viewerUid);
+  allow create, update: if false;
 
-      allow delete: if signedIn()
-        && (
-          request.auth.uid == ownerUid
-          || request.auth.uid == viewerUid
-        );
-    }
+  allow delete: if isOwner(ownerUid);
+
+  match /allowedViewers/{viewerUid} {
+    allow read: if signedIn()
+      && (
+        request.auth.uid == ownerUid
+        || request.auth.uid == viewerUid
+      );
+
+    allow create, update: if isOwner(ownerUid)
+      && contactShareHasOnlyAllowedFields()
+      && contactShareIsValid(ownerUid, viewerUid);
+
+    allow delete: if signedIn()
+      && (
+        request.auth.uid == ownerUid
+        || request.auth.uid == viewerUid
+      );
+  }
+}
 
     match /reports/{reportId} {
       allow create: if signedIn()
@@ -332,9 +340,11 @@ service cloud.firestore {
     }
 
     match /userEntitlements/{uid} {
-      allow read: if isOwner(uid);
+  allow read: if isOwner(uid);
 
-      allow create, update, delete: if false;
-    }
+  allow create, update: if false;
+
+  allow delete: if isOwner(uid);
+}
   }
 }
