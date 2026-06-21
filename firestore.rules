@@ -148,6 +148,18 @@ service cloud.firestore {
       ]);
     }
 
+    function blockedUserHasOnlyAllowedFields() {
+      return request.resource.data.keys().hasOnly([
+        'blockedUid',
+        'createdAt'
+      ]);
+    }
+
+    function blockedUserIsValid(blockedUid) {
+      return request.resource.data.blockedUid == blockedUid
+        && blockedUid != request.auth.uid;
+    }
+
     function contactShareHasOnlyAllowedFields() {
       return request.resource.data.keys().hasOnly([
         'ownerUid',
@@ -160,39 +172,40 @@ service cloud.firestore {
       return request.resource.data.ownerUid == ownerUid
         && request.resource.data.viewerUid == viewerUid;
     }
+
     function reportHasOnlyAllowedFields() {
-  return request.resource.data.keys().hasOnly([
-    'reporterUid',
-    'reportedUid',
-    'reason',
-    'details',
-    'source',
-    'status',
-    'createdAt',
-    'updatedAt'
-  ]);
-}
+      return request.resource.data.keys().hasOnly([
+        'reporterUid',
+        'reportedUid',
+        'reason',
+        'details',
+        'source',
+        'status',
+        'createdAt',
+        'updatedAt'
+      ]);
+    }
 
-function reportReasonIsValid() {
-  return request.resource.data.reason == 'inappropriate_contact'
-    || request.resource.data.reason == 'scam'
-    || request.resource.data.reason == 'spam'
-    || request.resource.data.reason == 'fake_profile'
-    || request.resource.data.reason == 'other';
-}
+    function reportReasonIsValid() {
+      return request.resource.data.reason == 'inappropriate_contact'
+        || request.resource.data.reason == 'scam'
+        || request.resource.data.reason == 'spam'
+        || request.resource.data.reason == 'fake_profile'
+        || request.resource.data.reason == 'other';
+    }
 
-function reportIsValid() {
-  return request.resource.data.reporterUid == request.auth.uid
-    && request.resource.data.reportedUid is string
-    && request.resource.data.reportedUid != request.auth.uid
-    && reportReasonIsValid()
-    && request.resource.data.details is string
-    && request.resource.data.details.size() <= 500
-    && request.resource.data.source is string
-    && request.resource.data.source.size() > 0
-    && request.resource.data.source.size() <= 50
-    && request.resource.data.status == 'open';
-}
+    function reportIsValid() {
+      return request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.reportedUid is string
+        && request.resource.data.reportedUid != request.auth.uid
+        && reportReasonIsValid()
+        && request.resource.data.details is string
+        && request.resource.data.details.size() <= 500
+        && request.resource.data.source is string
+        && request.resource.data.source.size() > 0
+        && request.resource.data.source.size() <= 50
+        && request.resource.data.status == 'open';
+    }
 
     match /users/{uid} {
       allow create: if isOwner(uid);
@@ -220,6 +233,20 @@ function reportIsValid() {
 
         allow create, update: if isOwner(uid)
           && dailyUsageHasOnlyAllowedFields();
+
+        allow delete: if isOwner(uid);
+      }
+
+      match /blockedUsers/{blockedUid} {
+        allow read: if isOwner(uid)
+          || (
+            signedIn()
+            && request.auth.uid == blockedUid
+          );
+
+        allow create, update: if isOwner(uid)
+          && blockedUserHasOnlyAllowedFields()
+          && blockedUserIsValid(blockedUid);
 
         allow delete: if isOwner(uid);
       }
@@ -277,13 +304,6 @@ function reportIsValid() {
 
       allow delete: if isOwner(uid);
     }
-    match /reports/{reportId} {
-  allow create: if signedIn()
-    && reportHasOnlyAllowedFields()
-    && reportIsValid();
-
-  allow read, update, delete: if false;
-}
 
     match /contactShares/{ownerUid}/allowedViewers/{viewerUid} {
       allow read: if signedIn()
@@ -296,7 +316,19 @@ function reportIsValid() {
         && contactShareHasOnlyAllowedFields()
         && contactShareIsValid(ownerUid, viewerUid);
 
-      allow delete: if isOwner(ownerUid);
+      allow delete: if signedIn()
+        && (
+          request.auth.uid == ownerUid
+          || request.auth.uid == viewerUid
+        );
+    }
+
+    match /reports/{reportId} {
+      allow create: if signedIn()
+        && reportHasOnlyAllowedFields()
+        && reportIsValid();
+
+      allow read, update, delete: if false;
     }
 
     match /userEntitlements/{uid} {

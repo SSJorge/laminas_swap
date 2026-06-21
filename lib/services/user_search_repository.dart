@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/match_candidate.dart';
 import '../utils/display_name_utils.dart';
+import 'block_repository.dart';
 
 class UserSearchRepository {
   UserSearchRepository(this._db);
@@ -29,6 +30,25 @@ class UserSearchRepository {
 
     if (targetUid == myUid) {
       throw Exception('No puedes buscarte a ti mismo.');
+    }
+    final blockRepository = BlockRepository(_db);
+
+    final iBlockedThem = await blockRepository.hasBlocked(
+      blockerUid: myUid,
+      blockedUid: targetUid,
+    );
+
+    if (iBlockedThem) {
+      throw Exception('No se encontró un usuario visible con ese nombre.');
+    }
+
+    final theyBlockedMe = await blockRepository.hasBlocked(
+      blockerUid: targetUid,
+      blockedUid: myUid,
+    );
+
+    if (theyBlockedMe) {
+      throw Exception('No se encontró un usuario visible con ese nombre.');
     }
 
     final myProfileDoc = await _db

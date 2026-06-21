@@ -4,6 +4,7 @@ import '../models/match_candidate.dart';
 import '../models/confirmed_match.dart';
 import '../data/daily_limits.dart';
 import '../models/user_entitlements.dart';
+import 'block_repository.dart';
 
 class MatchingRepository {
   MatchingRepository(this._db);
@@ -24,6 +25,8 @@ class MatchingRepository {
     final myComunaKey = _effectiveComunaKey(myData);
     final myMissingIds = _readStringSet(myData['missingIds']);
     final myDuplicateIds = _readStringSet(myData['duplicateIds']);
+    final blockRepository = BlockRepository(_db);
+    final myBlockedIds = await blockRepository.getBlockedUserIds(uid);
 
     if (myComunaKey.isEmpty) {
       throw Exception('Primero guarda tu comuna en Mi perfil.');
@@ -39,6 +42,15 @@ class MatchingRepository {
 
     for (final doc in publicProfilesSnapshot.docs) {
       if (doc.id == uid) {
+        continue;
+      }
+      final shouldSkipBecauseOfBlock = await _shouldSkipBecauseOfBlock(
+        myUid: uid,
+        otherUid: doc.id,
+        myBlockedIds: myBlockedIds,
+      );
+
+      if (shouldSkipBecauseOfBlock) {
         continue;
       }
 
@@ -95,6 +107,8 @@ class MatchingRepository {
     int limit = 100,
   }) async {
     final myProfileDoc = await _db.collection('publicProfiles').doc(uid).get();
+    final blockRepository = BlockRepository(_db);
+    final myBlockedIds = await blockRepository.getBlockedUserIds(uid);
 
     if (!myProfileDoc.exists) {
       throw Exception('Primero completa tu perfil público.');
@@ -118,6 +132,15 @@ class MatchingRepository {
       final targetUid = myLikeDoc.id;
 
       if (targetUid == uid) {
+        continue;
+      }
+      final shouldSkipBecauseOfBlock = await _shouldSkipBecauseOfBlock(
+        myUid: uid,
+        otherUid: targetUid,
+        myBlockedIds: myBlockedIds,
+      );
+
+      if (shouldSkipBecauseOfBlock) {
         continue;
       }
 
@@ -257,6 +280,8 @@ class MatchingRepository {
     final myComunaKey = _effectiveComunaKey(myData);
     final myMissingIds = _readStringSet(myData['missingIds']);
     final myDuplicateIds = _readStringSet(myData['duplicateIds']);
+    final blockRepository = BlockRepository(_db);
+    final myBlockedIds = await blockRepository.getBlockedUserIds(uid);
 
     if (myComunaKey.isEmpty) {
       throw Exception('Primero guarda tu comuna en Mi perfil.');
@@ -288,6 +313,15 @@ class MatchingRepository {
         continue;
       }
       if (doc.id == uid) {
+        continue;
+      }
+      final shouldSkipBecauseOfBlock = await _shouldSkipBecauseOfBlock(
+        myUid: uid,
+        otherUid: doc.id,
+        myBlockedIds: myBlockedIds,
+      );
+
+      if (shouldSkipBecauseOfBlock) {
         continue;
       }
 
@@ -551,5 +585,24 @@ class MatchingRepository {
     }
 
     return 0;
+  }
+
+  Future<bool> _shouldSkipBecauseOfBlock({
+    required String myUid,
+    required String otherUid,
+    required Set<String> myBlockedIds,
+  }) async {
+    if (myBlockedIds.contains(otherUid)) {
+      return true;
+    }
+
+    final blockRepository = BlockRepository(_db);
+
+    final theyBlockedMe = await blockRepository.hasBlocked(
+      blockerUid: otherUid,
+      blockedUid: myUid,
+    );
+
+    return theyBlockedMe;
   }
 }

@@ -7,6 +7,7 @@ import '../data/album_catalog.dart';
 import '../models/confirmed_match.dart';
 import '../services/matching_repository.dart';
 import '../widgets/report_user_button.dart';
+import '../widgets/block_user_button.dart';
 
 class ConfirmedMatchesScreen extends StatefulWidget {
   const ConfirmedMatchesScreen({super.key});
@@ -380,6 +381,15 @@ class _ConfirmedMatchCard extends StatelessWidget {
               reportedUid: candidate.uid,
               reportedDisplayName: candidate.displayName,
               source: 'confirmed_matches',
+            ),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: BlockUserButton(
+              blockedUid: candidate.uid,
+              blockedDisplayName: candidate.displayName,
+              onBlocked: onHideMyContact,
             ),
           ),
         ],

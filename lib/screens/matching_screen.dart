@@ -9,6 +9,7 @@ import '../services/matching_repository.dart';
 import '../widgets/ad_placeholder_card.dart';
 import '../widgets/daily_limits_card.dart';
 import '../widgets/report_user_button.dart';
+import '../widgets/block_user_button.dart';
 
 class MatchingScreen extends StatefulWidget {
   const MatchingScreen({super.key});
@@ -405,6 +406,15 @@ class _MatchCandidateCard extends StatelessWidget {
                     onPressed: isSaving ? null : onLike,
                     icon: const Icon(Icons.favorite),
                     label: const Text('Like'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: BlockUserButton(
+                    blockedUid: candidate.uid,
+                    blockedDisplayName: candidate.displayName,
+                    onBlocked: onDislike,
                   ),
                 ),
               ],

@@ -9,6 +9,7 @@ import '../services/matching_repository.dart';
 import '../widgets/ad_placeholder_card.dart';
 import '../widgets/daily_limits_card.dart';
 import '../widgets/report_user_button.dart';
+import '../widgets/block_user_button.dart';
 
 class ReceivedLikesScreen extends StatefulWidget {
   const ReceivedLikesScreen({super.key});
@@ -412,6 +413,15 @@ class _ReceivedLikeCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: BlockUserButton(
+                blockedUid: candidate.uid,
+                blockedDisplayName: candidate.displayName,
+                onBlocked: onDislike,
+              ),
             ),
             const SizedBox(height: 8),
             Align(
