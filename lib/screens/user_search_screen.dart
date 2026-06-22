@@ -171,7 +171,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
                 ],
                 decoration: const InputDecoration(
                   labelText: 'Nombre de usuario',
-                  hintText: 'Ej: ssjorge',
+                  hintText: 'Ej: username123',
                   border: OutlineInputBorder(),
                 ),
                 onSubmitted: (_) => _search(),

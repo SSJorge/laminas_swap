@@ -9,7 +9,9 @@ import '../data/profile_constants.dart';
 import '../utils/display_name_utils.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.initialRegisterMode = true});
+
+  final bool initialRegisterMode;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -20,7 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  bool _isRegisterMode = true;
+  late bool _isRegisterMode;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -28,11 +30,25 @@ class _LoginScreenState extends State<LoginScreen> {
   final _userRepository = UserRepository(FirebaseFirestore.instance);
 
   @override
+  void initState() {
+    super.initState();
+    _isRegisterMode = widget.initialRegisterMode;
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _closeAuthScreenAfterSuccess() {
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   Future<void> _submit() async {
@@ -71,6 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
           rethrow;
         }
 
+        _closeAuthScreenAfterSuccess();
         return;
       } else {
         credential = await _auth.signInWithEmailAndPassword(
@@ -89,6 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
         user: user,
         displayName: displayName,
       );
+      _closeAuthScreenAfterSuccess();
     } on FirebaseAuthException catch (e) {
       setState(() {
         _errorMessage = _firebaseErrorToSpanish(e);

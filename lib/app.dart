@@ -7,10 +7,15 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const seedGreen = Color(0xFF0B7A3B);
+
     return MaterialApp(
       title: 'Intercambio de Láminas',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: seedGreen),
+      ),
       home: const AuthGate(),
     );
   }
