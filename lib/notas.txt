@@ -15,17 +15,117 @@ Motivo:
 - perfil falso
 - otro
 
-Guardar en:
+1. Política de privacidad y términos simples
+2. Página pública mínima / landing
 
-reports/{reportId}
-  reporterUid
-  reportedUid
-  reason
-  details
-  createdAt
-  status: "open"
+Antes de difusión, necesitas una pantalla pública simple antes del login o una landing separada con:
 
-  2. Bloquear usuario
-  3. Ocultar perfil
-  4. Eliminar cuenta
-  5. Política de privacidad y términos simples
+- qué hace la app
+- cómo funciona
+- botón crear cuenta
+- política de privacidad
+- términos
+- instrucciones para instalar como PWA
+- aviso de no afiliación
+
+Esto también ayuda a confianza. Si alguien recibe el link y cae directo a login, puede desconfiar.
+
+3. Revisión legal de nombres y textos
+
+Evita en UI pública y landing cualquier cosa tipo:
+
+FIFA
+Panini
+World Cup
+Copa Mundial
+Mundial 2026
+escudos
+jugadores reales como gancho comercial
+
+Puedes usar lenguaje genérico:
+
+láminas coleccionables
+álbum deportivo
+tarjetas coleccionables
+intercambio de láminas
+
+En la descripción legal pondría algo como:
+
+Esta aplicación es independiente y no está afiliada, patrocinada ni respaldada por marcas, federaciones, editoriales o eventos deportivos oficiales.
+4. QA funcional antes de lanzar
+
+Haz una prueba completa con 4–6 cuentas falsas:
+
+- crear cuenta
+- nombre duplicado bloqueado
+- marcar láminas
+- matching
+- like/dislike
+- límite diario
+- premium manual
+- búsqueda exacta
+- match mutuo
+- mostrar contacto a una persona específica
+- reportar
+- bloquear
+- ocultar perfil
+- eliminar cuenta
+
+También prueba casos raros:
+
+- usuario bloqueado intenta buscarte
+- usuario con match elimina cuenta
+- usuario sin descripción
+- usuario sin contacto mostrado
+- usuario premium vs gratis
+- usuario con adsRemoved
+5. Mejorar eliminación de cuenta más adelante
+
+Para MVP está bien como lo hiciste. Pero más adelante conviene moverlo a Cloud Functions, porque borrar subcolecciones y referencias cruzadas desde cliente puede ser frágil. No lo priorizaría antes de lanzar si ya funciona, pero sí lo dejaría como deuda técnica.
+
+6. Preparar Play Store en paralelo
+
+Para Play Store te faltaría:
+
+- ícono definitivo
+- nombre visible definitivo
+- screenshots
+- descripción corta/larga
+- política de privacidad pública
+- formulario Data Safety
+- formulario de eliminación de cuenta
+- app bundle firmado
+- closed testing con testers si aplica a tu cuenta
+
+La política de eliminación de Google Play es específica: si una app permite crear cuentas, debe permitir eliminar la cuenta dentro de la app y además tener un recurso web relacionado con eliminación de cuenta/datos.
+
+Orden que te recomiendo ahora
+1. Crear Política de privacidad
+2. Crear Términos simples
+3. Crear landing pública mínima
+4. Crear página pública de eliminación de cuenta/datos
+5. QA con cuentas falsas
+6. Deploy PWA
+7. Difusión cerrada con 10-20 personas
+
+
+5. Metadata de Play Store
+
+Cuando subas a Play Store, revisa especialmente:
+
+nombre de app
+descripción corta
+descripción larga
+ícono
+feature graphic
+screenshots
+categoría
+tags
+texto promocional
+
+No uses marcas protegidas como keywords para captar búsquedas. Por ejemplo, no pongas:
+
+“la mejor app para intercambiar láminas Panini del Mundial 2026”
+
+Usa algo como:
+“app independiente para registrar láminas coleccionables, encontrar personas compatibles y coordinar intercambios de forma privada”

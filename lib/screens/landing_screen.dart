@@ -327,17 +327,17 @@ class _PitchPreview extends StatelessWidget {
             const Positioned(
               left: 24,
               top: 24,
-              child: _MiniCard(label: 'Faltantes', value: '12'),
+              child: _MiniCard(label: 'Matches', value: '12'),
             ),
             const Positioned(
               right: 24,
               bottom: 24,
-              child: _MiniCard(label: 'Repetidas', value: '8'),
+              child: _MiniCard(label: 'Faltantes', value: '320'),
             ),
             const Positioned(
               left: 24,
               bottom: 24,
-              child: _MiniCard(label: 'Matches', value: '4'),
+              child: _MiniCard(label: 'Repetidas', value: '60'),
             ),
           ],
         ),

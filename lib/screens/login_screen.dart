@@ -21,6 +21,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   late bool _isRegisterMode;
   bool _isLoading = false;
@@ -40,6 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -60,12 +62,24 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
+      final confirmPassword = _confirmPasswordController.text.trim();
+
       final displayName = _isRegisterMode
           ? validateDisplayName(_nameController.text)
           : _nameController.text.trim();
 
       if (email.isEmpty || password.isEmpty) {
         throw Exception('Ingresa email y contraseña.');
+      }
+
+      if (_isRegisterMode) {
+        if (confirmPassword.isEmpty) {
+          throw Exception('Confirma tu contraseña.');
+        }
+
+        if (password != confirmPassword) {
+          throw Exception('Las contraseñas no coinciden.');
+        }
       }
 
       UserCredential credential;
@@ -204,6 +218,18 @@ class _LoginScreenState extends State<LoginScreen> {
                         border: OutlineInputBorder(),
                       ),
                     ),
+                    if (_isRegisterMode) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _confirmPasswordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Confirmar contraseña',
+                          border: OutlineInputBorder(),
+                        ),
+                        onSubmitted: (_) => _submit(),
+                      ),
+                    ],
 
                     const SizedBox(height: 16),
 
@@ -242,6 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               setState(() {
                                 _isRegisterMode = !_isRegisterMode;
                                 _errorMessage = null;
+                                _confirmPasswordController.clear();
                               });
                             },
                       child: Text(
