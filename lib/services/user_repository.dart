@@ -10,6 +10,30 @@ class UserRepository {
   UserRepository(this._db);
 
   final FirebaseFirestore _db;
+  Future<void> ensureDisplayNameAvailable({
+    required String displayName,
+    String? currentUid,
+  }) async {
+    final cleanName = validateDisplayName(displayName);
+    final cleanNameKey = displayNameKeyFrom(cleanName);
+
+    final usernameDoc = await _db
+        .collection('usernames')
+        .doc(cleanNameKey)
+        .get();
+
+    if (!usernameDoc.exists) {
+      return;
+    }
+
+    final ownerUid = usernameDoc.data()?['uid'];
+
+    if (currentUid != null && ownerUid == currentUid) {
+      return;
+    }
+
+    throw Exception('Ese nombre de usuario ya está ocupado.');
+  }
 
   Future<void> initUserIfNeeded({
     required User user,
@@ -36,11 +60,14 @@ class UserRepository {
     final privateProfileRef = _db.collection('privateProfiles').doc(user.uid);
     final privateContactRef = _db.collection('privateContacts').doc(user.uid);
 
+    var usernameAlreadyTaken = false;
+
     await _db.runTransaction((transaction) async {
       final usernameDoc = await transaction.get(usernameRef);
 
       if (usernameDoc.exists) {
-        throw Exception('Ese nombre de usuario ya está ocupado.');
+        usernameAlreadyTaken = true;
+        return;
       }
 
       transaction.set(usernameRef, {
@@ -103,6 +130,9 @@ class UserRepository {
         'contactValue': user.email ?? '',
         'updatedAt': now,
       });
+      if (usernameAlreadyTaken) {
+        throw Exception('Ese nombre de usuario ya está ocupado.');
+      }
     });
 
     await user.updateDisplayName(cleanName);
@@ -122,6 +152,11 @@ class UserRepository {
   }) async {
     final cleanName = validateDisplayName(displayName);
     final cleanNameKey = displayNameKeyFrom(cleanName);
+
+    await ensureDisplayNameAvailable(
+      displayName: cleanName,
+      currentUid: user.uid,
+    );
 
     final cleanRegionId = regionId.trim();
     final cleanRegion = region.trim();

@@ -6,6 +6,16 @@ https://laminas-swap.web.app actualiza:
 flutter build web
 firebase deploy --only hosting
 
+flutter build web --release --pwa-strategy=none
+firebase deploy --only hosting
+https://truequegol.cl
+https://truequegol.cl?v=1
+
+Cuando quieras evitar caché o builds viejos:
+rmdir /s /q build\web
+flutter build web --release --pwa-strategy=none
+firebase deploy --only hosting
+
 
 Reportar usuario
 Motivo:

@@ -24,7 +24,7 @@ class LandingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     const fieldGreen = Color(0xFF0B7A3B);
     const darkGreen = Color(0xFF052E1A);
-    const grassGreen = Color(0xFF13A85B);
+    // const grassGreen = Color(0xFF13A85B);
     const nearBlack = Color(0xFF07130D);
 
     return Scaffold(
