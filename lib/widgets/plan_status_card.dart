@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/user_entitlements.dart';
+import '../screens/plans_screen.dart';
 import '../services/daily_quota_repository.dart';
 
 class PlanStatusCard extends StatelessWidget {
@@ -25,6 +26,11 @@ class PlanStatusCard extends StatelessWidget {
 
         return Card(
           child: ListTile(
+            onTap: () {
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const PlansScreen()));
+            },
             leading: Icon(
               entitlements.hasAnyPaidFeature
                   ? Icons.workspace_premium
@@ -32,6 +38,7 @@ class PlanStatusCard extends StatelessWidget {
             ),
             title: Text('Plan actual: ${entitlements.planLabel}'),
             subtitle: Text(_subtitleFor(entitlements)),
+            trailing: const Icon(Icons.chevron_right),
           ),
         );
       },
@@ -51,6 +58,6 @@ class PlanStatusCard extends StatelessWidget {
       return 'Sin anuncios. Mantienes límites extendidos por no ver anuncios.';
     }
 
-    return 'Gratis. Puedes mejorar límites y quitar anuncios próximamente.';
+    return 'Gratis. Toca para ver planes y beneficios.';
   }
 }
