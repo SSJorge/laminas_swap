@@ -11,31 +11,6 @@ class UserRepository {
   UserRepository(this._db);
 
   final FirebaseFirestore _db;
-  Future<void> ensureDisplayNameAvailable({
-    required String displayName,
-    String? currentUid,
-  }) async {
-    final cleanName = validateDisplayName(displayName);
-    final cleanNameKey = displayNameKeyFrom(cleanName);
-
-    final usernameDoc = await _db
-        .collection('usernames')
-        .doc(cleanNameKey)
-        .get();
-
-    if (!usernameDoc.exists) {
-      return;
-    }
-
-    final ownerUid = usernameDoc.data()?['uid'];
-
-    if (currentUid != null && ownerUid == currentUid) {
-      return;
-    }
-
-    throw Exception('Ese nombre de usuario ya está ocupado.');
-  }
-
   Future<String> _generateAvailableGenericDisplayName() async {
     final random = Random.secure();
 
@@ -133,6 +108,31 @@ class UserRepository {
       'usernamePromptDismissed': true,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  Future<void> ensureDisplayNameAvailable({
+    required String displayName,
+    String? currentUid,
+  }) async {
+    final cleanName = validateDisplayName(displayName);
+    final cleanNameKey = displayNameKeyFrom(cleanName);
+
+    final usernameDoc = await _db
+        .collection('usernames')
+        .doc(cleanNameKey)
+        .get();
+
+    if (!usernameDoc.exists) {
+      return;
+    }
+
+    final ownerUid = usernameDoc.data()?['uid'];
+
+    if (currentUid != null && ownerUid == currentUid) {
+      return;
+    }
+
+    throw Exception('Ese nombre de usuario ya está ocupado.');
   }
 
   Future<void> initUserIfNeeded({

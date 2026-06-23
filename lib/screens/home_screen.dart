@@ -1,22 +1,80 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'cards_screen.dart';
-import 'matching_screen.dart';
-import 'profile_screen.dart';
-
-import 'confirmed_matches_screen.dart';
-import 'received_likes_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'user_search_screen.dart';
+import '../services/matching_repository.dart';
 import '../widgets/plan_status_card.dart';
 import '../widgets/username_prompt_listener.dart';
+import 'cards_screen.dart';
+import 'confirmed_matches_screen.dart';
+import 'matching_screen.dart';
+import 'profile_screen.dart';
+import 'received_likes_screen.dart';
+import 'user_search_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late final MatchingRepository _matchingRepository;
+
+  Future<int>? _receivedLikesCountFuture;
+  Future<int>? _confirmedMatchesCountFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _matchingRepository = MatchingRepository(FirebaseFirestore.instance);
+    _refreshCounters();
+  }
+
+  void _refreshCounters() {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      _receivedLikesCountFuture = Future.value(0);
+      _confirmedMatchesCountFuture = Future.value(0);
+      return;
+    }
+
+    _receivedLikesCountFuture = _loadReceivedLikesCount(user.uid);
+    _confirmedMatchesCountFuture = _loadConfirmedMatchesCount(user.uid);
+  }
+
+  Future<int> _loadReceivedLikesCount(String uid) async {
+    try {
+      final likes = await _matchingRepository.findReceivedLikes(uid: uid);
+      return likes.length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  Future<int> _loadConfirmedMatchesCount(String uid) async {
+    try {
+      final matches = await _matchingRepository.findConfirmedMatches(uid: uid);
+      return matches.length;
+    } catch (_) {
+      return 0;
+    }
+  }
 
   Future<void> _signOut() async {
     await FirebaseAuth.instance.signOut();
+  }
+
+  Future<void> _openScreen(Widget screen) async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+
+    if (!mounted) return;
+
+    setState(() {
+      _refreshCounters();
+    });
   }
 
   @override
@@ -66,7 +124,6 @@ class HomeScreen extends StatelessWidget {
                       'Hola',
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
-                  const SizedBox(height: 8),
                   const SizedBox(height: 16),
                   const PlanStatusCard(),
                   const SizedBox(height: 12),
@@ -83,11 +140,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const ProfileScreen(),
-                          ),
-                        );
+                        _openScreen(const ProfileScreen());
                       },
                     ),
                   ),
@@ -101,11 +154,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const CardsScreen(),
-                          ),
-                        );
+                        _openScreen(const CardsScreen());
                       },
                     ),
                   ),
@@ -119,11 +168,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const MatchingScreen(),
-                          ),
-                        );
+                        _openScreen(const MatchingScreen());
                       },
                     ),
                   ),
@@ -135,13 +180,11 @@ class HomeScreen extends StatelessWidget {
                       subtitle: const Text(
                         'Personas que te dieron like. Responde para crear match.',
                       ),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: _CounterBadgeTrailing(
+                        future: _receivedLikesCountFuture,
+                      ),
                       onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const ReceivedLikesScreen(),
-                          ),
-                        );
+                        _openScreen(const ReceivedLikesScreen());
                       },
                     ),
                   ),
@@ -153,13 +196,11 @@ class HomeScreen extends StatelessWidget {
                       subtitle: const Text(
                         'Matches mutuos con descripción y contacto permitido.',
                       ),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: _CounterBadgeTrailing(
+                        future: _confirmedMatchesCountFuture,
+                      ),
                       onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const ConfirmedMatchesScreen(),
-                          ),
-                        );
+                        _openScreen(const ConfirmedMatchesScreen());
                       },
                     ),
                   ),
@@ -173,11 +214,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const UserSearchScreen(),
-                          ),
-                        );
+                        _openScreen(const UserSearchScreen());
                       },
                     ),
                   ),
@@ -186,6 +223,76 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _CounterBadgeTrailing extends StatelessWidget {
+  const _CounterBadgeTrailing({required this.future});
+
+  final Future<int>? future;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<int>(
+      future: future,
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 0;
+
+        return _BadgeChevron(count: count);
+      },
+    );
+  }
+}
+
+class _BadgeChevron extends StatelessWidget {
+  const _BadgeChevron({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    if (count <= 0) {
+      return const Icon(Icons.chevron_right);
+    }
+
+    final text = count > 99 ? '99+' : count.toString();
+
+    return SizedBox(
+      width: 40,
+      height: 40,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          const Icon(Icons.chevron_right),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.error,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.surface,
+                  width: 2,
+                ),
+              ),
+              child: Text(
+                text,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onError,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
