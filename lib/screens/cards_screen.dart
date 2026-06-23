@@ -353,18 +353,22 @@ class _CardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     final backgroundColor = switch (card.status) {
-      CardStatus.missing => colorScheme.surface,
-      CardStatus.obtained => colorScheme.primaryContainer,
-      CardStatus.duplicate => colorScheme.secondaryContainer,
+      CardStatus.missing => const Color(0xFFE3F2FD), // celeste/gris
+      CardStatus.obtained => const Color(0xFFC8E6C9), // verde
+      CardStatus.duplicate => const Color(0xFFFFCDD2), // rojo
     };
 
     final borderColor = switch (card.status) {
-      CardStatus.missing => colorScheme.outlineVariant,
-      CardStatus.obtained => colorScheme.primary,
-      CardStatus.duplicate => colorScheme.secondary,
+      CardStatus.missing => const Color(0xFF90CAF9),
+      CardStatus.obtained => const Color(0xFF43A047),
+      CardStatus.duplicate => const Color(0xFFE53935),
+    };
+
+    final textColor = switch (card.status) {
+      CardStatus.missing => const Color(0xFF0D47A1),
+      CardStatus.obtained => const Color(0xFF1B5E20),
+      CardStatus.duplicate => const Color(0xFFB71C1C),
     };
 
     return InkWell(
@@ -390,18 +394,26 @@ class _CardTile extends StatelessWidget {
                   children: [
                     Text(
                       card.definition.number.toString(),
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: textColor,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       card.status.shortLabel,
-                      style: Theme.of(context).textTheme.labelLarge,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: textColor,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       card.status.label,
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.labelSmall,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelSmall?.copyWith(color: textColor),
                     ),
                   ],
                 ),
