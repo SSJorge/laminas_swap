@@ -19,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _confirmPasswordController = TextEditingController();
 
   late bool _isRegisterMode;
+
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -40,10 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _closeAuthScreenAfterSuccess() {
-    if (!mounted) {
-      return;
-    }
-
+    if (!mounted) return;
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
@@ -57,8 +55,6 @@ class _LoginScreenState extends State<LoginScreen> {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
       final confirmPassword = _confirmPasswordController.text.trim();
-
-      final String? displayName = null;
 
       if (email.isEmpty || password.isEmpty) {
         throw Exception('Ingresa email y contraseña.');
@@ -83,10 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
 
         try {
-          await _userRepository.initUserIfNeeded(
-            user: credential.user!,
-            displayName: displayName,
-          );
+          await _userRepository.initUserIfNeeded(user: credential.user!);
         } catch (e) {
           await credential.user?.delete();
           await _auth.signOut();
@@ -95,12 +88,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
         _closeAuthScreenAfterSuccess();
         return;
-      } else {
-        credential = await _auth.signInWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
       }
+
+      credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
       final user = credential.user;
 
@@ -108,10 +101,8 @@ class _LoginScreenState extends State<LoginScreen> {
         throw Exception('No se pudo obtener el usuario.');
       }
 
-      await _userRepository.initUserIfNeeded(
-        user: user,
-        displayName: displayName,
-      );
+      await _userRepository.initUserIfNeeded(user: user);
+
       _closeAuthScreenAfterSuccess();
     } on FirebaseAuthException catch (e) {
       setState(() {
@@ -122,11 +113,11 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -170,9 +161,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 20),
-
-                    if (_isRegisterMode) const SizedBox(height: 12),
-
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -181,9 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         border: OutlineInputBorder(),
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
                     TextField(
                       controller: _passwordController,
                       obscureText: true,
@@ -191,6 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         labelText: 'Contraseña',
                         border: OutlineInputBorder(),
                       ),
+                      onSubmitted: _isRegisterMode ? null : (_) => _submit(),
                     ),
                     if (_isRegisterMode) ...[
                       const SizedBox(height: 12),
@@ -204,27 +191,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         onSubmitted: (_) => _submit(),
                       ),
                     ],
-
                     const SizedBox(height: 16),
-
                     if (_errorMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          _errorMessage!,
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
+                      Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
                         ),
                       ),
-
+                    if (_errorMessage != null) const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
                         onPressed: _isLoading ? null : _submit,
                         child: _isLoading
                             ? const SizedBox(
-                                height: 18,
                                 width: 18,
+                                height: 18,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                 ),
@@ -232,9 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             : Text(title),
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
                     TextButton(
                       onPressed: _isLoading
                           ? null
@@ -248,7 +230,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Text(
                         _isRegisterMode
                             ? 'Ya tengo cuenta'
-                            : 'Quiero crear una cuenta',
+                            : 'Crear cuenta nueva',
                       ),
                     ),
                   ],
