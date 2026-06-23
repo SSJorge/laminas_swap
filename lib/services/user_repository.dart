@@ -5,6 +5,7 @@ import '../data/profile_constants.dart';
 import '../utils/display_name_utils.dart';
 import '../data/daily_limits.dart';
 import '../models/user_entitlements.dart';
+import 'dart:math';
 
 class UserRepository {
   UserRepository(this._db);
@@ -35,6 +36,105 @@ class UserRepository {
     throw Exception('Ese nombre de usuario ya está ocupado.');
   }
 
+  Future<String> _generateAvailableGenericDisplayName() async {
+    final random = Random.secure();
+
+    for (var attempt = 0; attempt < 30; attempt++) {
+      final number = 1000 + random.nextInt(9000);
+      final candidate = 'Usuario$number';
+      final key = displayNameKeyFrom(candidate);
+
+      final doc = await _db.collection('usernames').doc(key).get();
+
+      if (!doc.exists) {
+        return candidate;
+      }
+    }
+
+    final fallback = DateTime.now().millisecondsSinceEpoch.toString();
+    return 'Usuario${fallback.substring(fallback.length - 6)}';
+  }
+
+  Future<void> setDisplayNameOnly({
+    required User user,
+    required String displayName,
+  }) async {
+    final cleanName = validateDisplayName(displayName);
+    final cleanNameKey = displayNameKeyFrom(cleanName);
+
+    await ensureDisplayNameAvailable(
+      displayName: cleanName,
+      currentUid: user.uid,
+    );
+
+    final now = FieldValue.serverTimestamp();
+
+    final userRef = _db.collection('users').doc(user.uid);
+    final publicProfileRef = _db.collection('publicProfiles').doc(user.uid);
+    final newUsernameRef = _db.collection('usernames').doc(cleanNameKey);
+
+    var usernameAlreadyTaken = false;
+
+    await _db.runTransaction((transaction) async {
+      final userDoc = await transaction.get(userRef);
+      final newUsernameDoc = await transaction.get(newUsernameRef);
+
+      final userData = userDoc.data() ?? <String, dynamic>{};
+      final oldNameKey = userData['displayNameKey'] as String?;
+
+      if (newUsernameDoc.exists) {
+        final ownerUid = newUsernameDoc.data()?['uid'];
+
+        if (ownerUid != user.uid) {
+          usernameAlreadyTaken = true;
+          return;
+        }
+      }
+
+      if (oldNameKey != null &&
+          oldNameKey.isNotEmpty &&
+          oldNameKey != cleanNameKey) {
+        final oldUsernameRef = _db.collection('usernames').doc(oldNameKey);
+        transaction.delete(oldUsernameRef);
+      }
+
+      transaction.set(newUsernameRef, {
+        'uid': user.uid,
+        'displayName': cleanName,
+        'displayNameKey': cleanNameKey,
+        'updatedAt': now,
+      }, SetOptions(merge: true));
+
+      transaction.set(userRef, {
+        'displayName': cleanName,
+        'displayNameKey': cleanNameKey,
+        'hasChosenDisplayName': true,
+        'usernamePromptDismissed': true,
+        'updatedAt': now,
+        'lastActiveAt': now,
+      }, SetOptions(merge: true));
+
+      transaction.set(publicProfileRef, {
+        'displayName': cleanName,
+        'displayNameKey': cleanNameKey,
+        'lastActiveAt': now,
+      }, SetOptions(merge: true));
+    });
+
+    if (usernameAlreadyTaken) {
+      throw Exception('Ese nombre de usuario ya está ocupado.');
+    }
+
+    await user.updateDisplayName(cleanName);
+  }
+
+  Future<void> dismissUsernamePrompt({required String uid}) async {
+    await _db.collection('users').doc(uid).set({
+      'usernamePromptDismissed': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
   Future<void> initUserIfNeeded({
     required User user,
     String? displayName,
@@ -49,9 +149,13 @@ class UserRepository {
       return;
     }
 
-    final cleanName = validateDisplayName(
-      displayName ?? user.displayName ?? '',
-    );
+    final hasProvidedDisplayName =
+        displayName != null && displayName.trim().isNotEmpty;
+
+    final cleanName = hasProvidedDisplayName
+        ? validateDisplayName(displayName)
+        : await _generateAvailableGenericDisplayName();
+
     final cleanNameKey = displayNameKeyFrom(cleanName);
     final now = FieldValue.serverTimestamp();
 
@@ -81,6 +185,8 @@ class UserRepository {
       transaction.set(userRef, {
         'displayName': cleanName,
         'displayNameKey': cleanNameKey,
+        'hasChosenDisplayName': hasProvidedDisplayName,
+        'usernamePromptDismissed': false,
         'email': user.email,
         'contactType': contactTypeEmail,
         'contactValue': user.email ?? '',
@@ -130,8 +236,10 @@ class UserRepository {
         'contactValue': user.email ?? '',
         'updatedAt': now,
       });
-      if (usernameAlreadyTaken) {
-        throw Exception('Ese nombre de usuario ya está ocupado.');
+      if (usernameDoc.exists) {
+        throw Exception(
+          'No se pudo reservar un nombre de usuario automático. Intenta nuevamente.',
+        );
       }
     });
 
@@ -285,6 +393,8 @@ class UserRepository {
       transaction.set(userRef, {
         'displayName': cleanName,
         'displayNameKey': cleanNameKey,
+        'hasChosenDisplayName': true,
+        'usernamePromptDismissed': true,
         'email': user.email,
         'contactType': cleanContactType,
         'contactValue': effectiveContactValue,

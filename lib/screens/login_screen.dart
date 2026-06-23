@@ -3,10 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/user_repository.dart';
-import 'package:flutter/services.dart';
-
-import '../data/profile_constants.dart';
-import '../utils/display_name_utils.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.initialRegisterMode = true});
@@ -18,7 +14,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -38,7 +33,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -64,9 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final password = _passwordController.text.trim();
       final confirmPassword = _confirmPasswordController.text.trim();
 
-      final displayName = _isRegisterMode
-          ? validateDisplayName(_nameController.text)
-          : _nameController.text.trim();
+      final String? displayName = null;
 
       if (email.isEmpty || password.isEmpty) {
         throw Exception('Ingresa email y contraseña.');
@@ -178,24 +170,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 20),
-
-                    if (_isRegisterMode)
-                      if (_isRegisterMode)
-                        TextField(
-                          controller: _nameController,
-                          maxLength: displayNameMaxLength,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[a-zA-Z0-9._]'),
-                            ),
-                          ],
-                          decoration: const InputDecoration(
-                            labelText: 'Nombre de usuario',
-                            helperText:
-                                'Único. Usa letras, números, punto o guion bajo.',
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
 
                     if (_isRegisterMode) const SizedBox(height: 12),
 
