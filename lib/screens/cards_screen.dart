@@ -102,6 +102,50 @@ class _CardsScreenState extends State<CardsScreen> {
     }
   }
 
+  void _showCardsHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Estados de las láminas'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Las láminas solo tienen 3 estados:\n\n'
+                  '0: Faltante\n'
+                  '1: Obtenida\n'
+                  '2: Repetida\n\n'
+                  'No se guarda la cantidad de repetidas para facilitar el llenado. '
+                  'De esta manera, puedes usar el botón +1 o -1 en todo un país '
+                  'si ya lo completaste y luego corregir manualmente solo las excepciones.',
+                  style: TextStyle(height: 1.35),
+                ),
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    'assets/images/info_laminas.png',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Entendido'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -113,7 +157,16 @@ class _CardsScreenState extends State<CardsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mis láminas')),
+      appBar: AppBar(
+        title: const Text('Mis láminas'),
+        actions: [
+          IconButton(
+            tooltip: 'Ayuda',
+            onPressed: _showCardsHelp,
+            icon: const Icon(Icons.help_outline),
+          ),
+        ],
+      ),
       body: StreamBuilder<Map<String, CardStatus>>(
         stream: _cardRepository.watchMyCardStatuses(user.uid),
         builder: (context, snapshot) {
