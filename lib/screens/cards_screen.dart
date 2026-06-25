@@ -626,6 +626,7 @@ class _CountrySection extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
+
               final crossAxisCount = width >= 700
                   ? 8
                   : width >= 520
@@ -634,30 +635,32 @@ class _CountrySection extends StatelessWidget {
                   ? 4
                   : 3;
 
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: cards.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  mainAxisSpacing: 8.0,
-                  crossAxisSpacing: 8.0,
-                  childAspectRatio: 1.0,
-                ),
-                itemBuilder: (context, index) {
-                  final card = cards[index];
-                  final isSavingCard =
-                      isSavingCountry ||
-                      savingCardIds.contains(card.definition.id);
+              const spacing = 8.0;
+              final totalSpacing = spacing * (crossAxisCount - 1);
+              final tileSize = (width - totalSpacing) / crossAxisCount;
 
-                  return _CardTile(
-                    card: card,
-                    isSaving: isSavingCard,
-                    onTap: () {
-                      return onCardTap(card: card, newStatus: card.status.next);
-                    },
-                  );
-                },
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  for (final card in cards)
+                    SizedBox(
+                      width: tileSize,
+                      height: tileSize,
+                      child: _CardTile(
+                        card: card,
+                        isSaving:
+                            isSavingCountry ||
+                            savingCardIds.contains(card.definition.id),
+                        onTap: () {
+                          return onCardTap(
+                            card: card,
+                            newStatus: card.status.next,
+                          );
+                        },
+                      ),
+                    ),
+                ],
               );
             },
           ),
@@ -700,7 +703,11 @@ class _CardTile extends StatelessWidget {
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: isSaving ? null : onTap,
+      onTap: isSaving
+          ? null
+          : () {
+              onTap();
+            },
       child: Ink(
         decoration: BoxDecoration(
           color: backgroundColor,
