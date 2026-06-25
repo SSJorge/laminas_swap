@@ -16,6 +16,24 @@ rmdir /s /q build\web
 flutter build web --release --pwa-strategy=none
 firebase deploy --only hosting
 
+flutter pub get
+flutter analyze
+flutter build web --release
+firebase deploy --only hosting,firestore:rules
+
+1. Crear web/install.html
+2. Crear web/account-deletion.html
+3. Agregar enlace “Instalar como app” en landing y Home
+4. Generar ícono Android con tu logo
+5. Configurar package name definitivo
+6. Configurar firma release
+7. flutter build appbundle --release
+8. Crear app en Play Console
+9. Completar Store listing, Privacy, Data Safety, Content Rating, App access
+10. Subir .aab a Closed testing
+11. Invitar 12 testers y comenzar los 14 días
+
+
 
 Reportar usuario
 Motivo:

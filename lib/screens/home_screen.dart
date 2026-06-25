@@ -11,6 +11,7 @@ import 'matching_screen.dart';
 import 'profile_screen.dart';
 import 'received_likes_screen.dart';
 import 'user_search_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -43,6 +44,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _receivedLikesCountFuture = _loadReceivedLikesCount(user.uid);
     _confirmedMatchesCountFuture = _loadConfirmedMatchesCount(user.uid);
+  }
+
+  Future<void> _openStaticPage(String path) async {
+    final uri = Uri.base.resolve(path);
+
+    await launchUrl(uri, mode: LaunchMode.platformDefault);
   }
 
   Future<int> _loadReceivedLikesCount(String uid) async {
@@ -123,6 +130,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 const SizedBox(height: 16),
                 const PlanStatusCard(),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.install_mobile),
+                    title: const Text('Instalar como app'),
+                    subtitle: const Text(
+                      'Agrega TruequeGol a la pantalla de inicio de tu celular.',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      _openStaticPage('/install.html');
+                    },
+                  ),
+                ),
                 const SizedBox(height: 12),
                 const Text(
                   'Registra tus láminas, configura tu perfil y encuentra intercambios cercanos.',

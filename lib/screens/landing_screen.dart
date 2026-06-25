@@ -61,6 +61,7 @@ class LandingScreen extends StatelessWidget {
                   const _PrivacySection(),
                   const SizedBox(height: 20),
                   _LegalFooter(
+                    onInstall: () => _openLegalPage('/install.html'),
                     onPrivacy: () => _openLegalPage('/privacy.html'),
                     onTerms: () => _openLegalPage('/terms.html'),
                   ),
@@ -536,8 +537,13 @@ class _FeatureItem extends StatelessWidget {
 }
 
 class _LegalFooter extends StatelessWidget {
-  const _LegalFooter({required this.onPrivacy, required this.onTerms});
+  const _LegalFooter({
+    required this.onInstall,
+    required this.onPrivacy,
+    required this.onTerms,
+  });
 
+  final VoidCallback onInstall;
   final VoidCallback onPrivacy;
   final VoidCallback onTerms;
 
@@ -548,6 +554,14 @@ class _LegalFooter extends StatelessWidget {
       spacing: 12,
       runSpacing: 8,
       children: [
+        TextButton.icon(
+          onPressed: onInstall,
+          icon: const Icon(Icons.install_mobile, color: Colors.white, size: 18),
+          label: const Text(
+            'Instalar como app',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
         TextButton(
           onPressed: onPrivacy,
           child: const Text(

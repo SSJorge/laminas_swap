@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eliminar cuenta y datos</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 24px;
+      line-height: 1.6;
+      color: #152019;
+      background: #f5faf6;
+    }
+
+    h1, h2 {
+      color: #07130d;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #d9e6dc;
+      border-radius: 18px;
+      padding: 20px;
+      margin: 16px 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    .warning {
+      background: #fff3f3;
+      border-left: 5px solid #d32f2f;
+      padding: 14px;
+      border-radius: 12px;
+    }
+
+    a {
+      color: #0b7a3b;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Eliminación de cuenta y datos</h1>
+
+  <p>
+    Esta página explica cómo eliminar tu cuenta de TruequeGol y los datos
+    principales asociados a ella.
+  </p>
+
+  <div class="card">
+    <h2>Eliminar cuenta desde la app</h2>
+    <ol>
+      <li>Inicia sesión en TruequeGol.</li>
+      <li>Entra a <strong>Mi perfil</strong>.</li>
+      <li>Presiona <strong>Eliminar cuenta</strong>.</li>
+      <li>Confirma la eliminación ingresando tu contraseña.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Datos que se eliminan</h2>
+    <p>Al eliminar tu cuenta, se eliminan los datos principales asociados a tu usuario, incluyendo:</p>
+    <ul>
+      <li>Perfil de usuario.</li>
+      <li>Perfil público.</li>
+      <li>Descripción y contacto privado.</li>
+      <li>Colección de láminas.</li>
+      <li>Likes, dislikes y acciones propias.</li>
+      <li>Límites diarios.</li>
+      <li>Usuarios bloqueados por ti.</li>
+      <li>Nombre de usuario reservado.</li>
+      <li>Cuenta de acceso.</li>
+    </ul>
+  </div>
+
+  <div class="warning">
+    <strong>Nota:</strong> algunos datos mínimos asociados a reportes, seguridad,
+    prevención de abuso, fraude o cumplimiento legal podrían conservarse cuando
+    sea necesario para proteger a otros usuarios o revisar incidentes.
+  </div>
+
+  <div class="card">
+    <h2>Solicitar ayuda</h2>
+    <p>
+      Si tienes problemas para eliminar tu cuenta desde la app, puedes escribir a:
+    </p>
+    <p>
+      <strong>trueque.gol.contacto@gmail.com</strong>
+    </p>
+    <p>
+      Indica el correo asociado a tu cuenta y que deseas solicitar eliminación de cuenta y datos.
+    </p>
+  </div>
+
+  <p>
+    <a href="/privacy.html">Ver política de privacidad</a> ·
+    <a href="/terms.html">Ver términos y condiciones</a> ·
+    <a href="/">Volver a TruequeGol</a>
+  </p>
+</body>
+</html>
