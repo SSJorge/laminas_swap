@@ -68,12 +68,28 @@ class CardRepository {
     required AlbumCountry country,
     required int direction,
     required Map<String, CardStatus> currentStatuses,
+  }) {
+    return shiftCountriesStatuses(
+      uid: uid,
+      countries: [country],
+      direction: direction,
+      currentStatuses: currentStatuses,
+    );
+  }
+
+  Future<void> shiftCountriesStatuses({
+    required String uid,
+    required List<AlbumCountry> countries,
+    required int direction,
+    required Map<String, CardStatus> currentStatuses,
   }) async {
     if (direction != 1 && direction != -1) {
       throw ArgumentError('direction debe ser 1 o -1.');
     }
 
-    if (country.cards.isEmpty) {
+    final cards = countries.expand((country) => country.cards).toList();
+
+    if (cards.isEmpty) {
       return;
     }
 
@@ -81,7 +97,7 @@ class CardRepository {
     final now = FieldValue.serverTimestamp();
     final batch = _db.batch();
 
-    for (final card in country.cards) {
+    for (final card in cards) {
       final currentStatus = updatedStatuses[card.id] ?? CardStatus.missing;
       final newStatus = direction == 1
           ? currentStatus.next
