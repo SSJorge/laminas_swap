@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../services/matching_repository.dart';
 import '../widgets/plan_status_card.dart';
-import '../widgets/username_prompt_listener.dart';
+// import '../widgets/username_prompt_listener.dart';
 import 'cards_screen.dart';
 import 'confirmed_matches_screen.dart';
 import 'matching_screen.dart';
@@ -92,134 +92,130 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: UsernamePromptListener(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: ListView(
-                children: [
-                  if (user != null)
-                    StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                      stream: FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(user.uid)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        final data = snapshot.data?.data();
-                        final displayName =
-                            data?['displayName'] ??
-                            user.displayName ??
-                            'Usuario';
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ListView(
+              children: [
+                if (user != null)
+                  StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      final data = snapshot.data?.data();
+                      final displayName =
+                          data?['displayName'] ?? user.displayName ?? 'Usuario';
 
-                        return Text(
-                          'Hola, $displayName',
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        );
-                      },
-                    )
-                  else
-                    Text(
-                      'Hola',
-                      style: Theme.of(context).textTheme.headlineMedium,
-                    ),
-                  const SizedBox(height: 16),
-                  const PlanStatusCard(),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Registra tus láminas, configura tu perfil y encuentra intercambios cercanos.',
+                      return Text(
+                        'Hola, $displayName',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      );
+                    },
+                  )
+                else
+                  Text(
+                    'Hola',
+                    style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  const SizedBox(height: 24),
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.person),
-                      title: const Text('Perfil'),
-                      subtitle: const Text(
-                        'Configura nombre, comuna y forma de contacto privada.',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        _openScreen(const ProfileScreen());
-                      },
+                const SizedBox(height: 16),
+                const PlanStatusCard(),
+                const SizedBox(height: 12),
+                const Text(
+                  'Registra tus láminas, configura tu perfil y encuentra intercambios cercanos.',
+                ),
+                const SizedBox(height: 24),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.person),
+                    title: const Text('Perfil'),
+                    subtitle: const Text(
+                      'Configura nombre, comuna y forma de contacto privada.',
                     ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      _openScreen(const ProfileScreen());
+                    },
                   ),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.style),
-                      title: const Text('Láminas'),
-                      subtitle: const Text(
-                        'Marca faltantes, obtenidas y repetidas.',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        _openScreen(const CardsScreen());
-                      },
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.style),
+                    title: const Text('Láminas'),
+                    subtitle: const Text(
+                      'Marca faltantes, obtenidas y repetidas.',
                     ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      _openScreen(const CardsScreen());
+                    },
                   ),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.search),
-                      title: const Text('Descubrir'),
-                      subtitle: const Text(
-                        'Encuentra usuarios compatibles y dales like o dislike.',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        _openScreen(const MatchingScreen());
-                      },
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.search),
+                    title: const Text('Descubrir'),
+                    subtitle: const Text(
+                      'Encuentra usuarios compatibles y dales like o dislike.',
                     ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      _openScreen(const MatchingScreen());
+                    },
                   ),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.favorite_border),
-                      title: const Text('Likes recibidos'),
-                      subtitle: const Text(
-                        'Personas que te dieron like. Responde para crear match.',
-                      ),
-                      trailing: _CounterBadgeTrailing(
-                        future: _receivedLikesCountFuture,
-                      ),
-                      onTap: () {
-                        _openScreen(const ReceivedLikesScreen());
-                      },
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.favorite_border),
+                    title: const Text('Likes recibidos'),
+                    subtitle: const Text(
+                      'Personas que te dieron like. Responde para crear match.',
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.handshake_outlined),
-                      title: const Text('Mis matches'),
-                      subtitle: const Text(
-                        'Matches mutuos con descripción y contacto permitido.',
-                      ),
-                      trailing: _CounterBadgeTrailing(
-                        future: _confirmedMatchesCountFuture,
-                      ),
-                      onTap: () {
-                        _openScreen(const ConfirmedMatchesScreen());
-                      },
+                    trailing: _CounterBadgeTrailing(
+                      future: _receivedLikesCountFuture,
                     ),
+                    onTap: () {
+                      _openScreen(const ReceivedLikesScreen());
+                    },
                   ),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.person_search),
-                      title: const Text('Buscar usuario'),
-                      subtitle: const Text(
-                        'Busca a alguien por su nombre de usuario exacto.',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                        _openScreen(const UserSearchScreen());
-                      },
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.handshake_outlined),
+                    title: const Text('Mis matches'),
+                    subtitle: const Text(
+                      'Matches mutuos con descripción y contacto permitido.',
                     ),
+                    trailing: _CounterBadgeTrailing(
+                      future: _confirmedMatchesCountFuture,
+                    ),
+                    onTap: () {
+                      _openScreen(const ConfirmedMatchesScreen());
+                    },
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.person_search),
+                    title: const Text('Buscar usuario'),
+                    subtitle: const Text(
+                      'Busca a alguien por su nombre de usuario exacto.',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      _openScreen(const UserSearchScreen());
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ),

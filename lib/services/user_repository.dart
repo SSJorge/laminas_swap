@@ -164,13 +164,13 @@ class UserRepository {
     final privateProfileRef = _db.collection('privateProfiles').doc(user.uid);
     final privateContactRef = _db.collection('privateContacts').doc(user.uid);
 
-    // var usernameAlreadyTaken = false;
+    var usernameAlreadyTaken = false;
 
     await _db.runTransaction((transaction) async {
       final usernameDoc = await transaction.get(usernameRef);
 
       if (usernameDoc.exists) {
-        // usernameAlreadyTaken = true;
+        usernameAlreadyTaken = true;
         return;
       }
 
@@ -185,8 +185,9 @@ class UserRepository {
       transaction.set(userRef, {
         'displayName': cleanName,
         'displayNameKey': cleanNameKey,
-        'hasChosenDisplayName': hasProvidedDisplayName,
-        'usernamePromptDismissed': false,
+        'hasChosenDisplayName': true,
+        // 'hasChosenDisplayName': hasProvidedDisplayName,
+        'usernamePromptDismissed': true,
         'email': user.email,
         'contactType': contactTypeEmail,
         'contactValue': user.email ?? '',
@@ -236,12 +237,12 @@ class UserRepository {
         'contactValue': user.email ?? '',
         'updatedAt': now,
       });
-      if (usernameDoc.exists) {
-        throw Exception(
-          'No se pudo reservar un nombre de usuario automático. Intenta nuevamente.',
-        );
-      }
     });
+    if (usernameAlreadyTaken) {
+      throw Exception(
+        'No se pudo reservar un nombre de usuario automático. Intenta nuevamente.',
+      );
+    }
 
     await user.updateDisplayName(cleanName);
   }
