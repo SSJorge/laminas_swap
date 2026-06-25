@@ -145,6 +145,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
+
+                const SizedBox(height: 12),
                 const Text(
                   'Registra tus láminas, configura tu perfil y encuentra intercambios cercanos.',
                 ),
@@ -233,6 +235,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       _openScreen(const UserSearchScreen());
+                    },
+                  ),
+                ),
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.delete_outline),
+                    title: const Text('Eliminar cuenta y datos'),
+                    subtitle: const Text(
+                      'Consulta cómo eliminar tu cuenta y los datos asociados.',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      _openStaticPage('/account-deletion.html');
                     },
                   ),
                 ),

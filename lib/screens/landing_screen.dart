@@ -64,6 +64,8 @@ class LandingScreen extends StatelessWidget {
                     onInstall: () => _openLegalPage('/install.html'),
                     onPrivacy: () => _openLegalPage('/privacy.html'),
                     onTerms: () => _openLegalPage('/terms.html'),
+                    onAccountDeletion: () =>
+                        _openLegalPage('/account-deletion.html'),
                   ),
                   const SizedBox(height: 16),
                   Container(
@@ -541,11 +543,13 @@ class _LegalFooter extends StatelessWidget {
     required this.onInstall,
     required this.onPrivacy,
     required this.onTerms,
+    required this.onAccountDeletion,
   });
 
   final VoidCallback onInstall;
   final VoidCallback onPrivacy;
   final VoidCallback onTerms;
+  final VoidCallback onAccountDeletion;
 
   @override
   Widget build(BuildContext context) {
@@ -573,6 +577,13 @@ class _LegalFooter extends StatelessWidget {
           onPressed: onTerms,
           child: const Text(
             'Términos y condiciones',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+        TextButton(
+          onPressed: onAccountDeletion,
+          child: const Text(
+            'Eliminar cuenta y datos',
             style: TextStyle(color: Colors.white),
           ),
         ),

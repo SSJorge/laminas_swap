@@ -348,7 +348,7 @@ class _CardsScreenState extends State<CardsScreen> {
                       initiallyExpanded: _isExpanded(
                         uid: user.uid,
                         tileId: 'group_${group.id}',
-                        defaultValue: true,
+                        defaultValue: false,
                       ),
                       isCountryExpanded: (country) {
                         return _isExpanded(
