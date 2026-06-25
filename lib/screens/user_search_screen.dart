@@ -80,11 +80,11 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
         _message = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (!mounted) return;
-
-      setState(() {
-        _isSearching = false;
-      });
+      if (!mounted) {
+        setState(() {
+          _isSearching = false;
+        });
+      }
     }
   }
 
@@ -121,11 +121,11 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
         _message = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (!mounted) return;
-
-      setState(() {
-        _isSavingAction = false;
-      });
+      if (!mounted) {
+        setState(() {
+          _isSavingAction = false;
+        });
+      }
     }
   }
 

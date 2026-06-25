@@ -111,11 +111,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _message = 'Error cargando perfil: ${e.toString()}';
       });
     } finally {
-      if (!mounted) return;
-
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -162,11 +162,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _message = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (!mounted) return;
-
-      setState(() {
-        _isSaving = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 

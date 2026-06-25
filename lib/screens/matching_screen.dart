@@ -90,11 +90,11 @@ class _MatchingScreenState extends State<MatchingScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
-      if (!mounted) return;
-
-      setState(() {
-        _savingCandidateIds.remove(candidate.uid);
-      });
+      if (mounted) {
+        setState(() {
+          _savingCandidateIds.remove(candidate.uid);
+        });
+      }
     }
   }
 

@@ -91,11 +91,11 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (!mounted) return;
-
-      setState(() {
-        _isDeleting = false;
-      });
+      if (!mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+      }
     }
   }
 

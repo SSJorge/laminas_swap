@@ -111,11 +111,11 @@ class _ReportUserDialogState extends State<_ReportUserDialog> {
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
-      if (!mounted) return;
-
-      setState(() {
-        _isSaving = false;
-      });
+      if (!mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 

@@ -164,13 +164,13 @@ class UserRepository {
     final privateProfileRef = _db.collection('privateProfiles').doc(user.uid);
     final privateContactRef = _db.collection('privateContacts').doc(user.uid);
 
-    var usernameAlreadyTaken = false;
+    // var usernameAlreadyTaken = false;
 
     await _db.runTransaction((transaction) async {
       final usernameDoc = await transaction.get(usernameRef);
 
       if (usernameDoc.exists) {
-        usernameAlreadyTaken = true;
+        // usernameAlreadyTaken = true;
         return;
       }
 

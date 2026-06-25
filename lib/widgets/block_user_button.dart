@@ -98,11 +98,11 @@ class _BlockUserDialogState extends State<_BlockUserDialog> {
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
-      if (!mounted) return;
-
-      setState(() {
-        _isSaving = false;
-      });
+      if (!mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 

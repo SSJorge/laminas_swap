@@ -120,11 +120,11 @@ class _UsernamePromptDialogState extends State<_UsernamePromptDialog> {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (!mounted) return;
-
-      setState(() {
-        _isSaving = false;
-      });
+      if (!mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 
@@ -153,11 +153,11 @@ class _UsernamePromptDialogState extends State<_UsernamePromptDialog> {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (!mounted) return;
-
-      setState(() {
-        _isSaving = false;
-      });
+      if (!mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 

@@ -92,11 +92,11 @@ class _ReceivedLikesScreenState extends State<ReceivedLikesScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
-      if (!mounted) return;
-
-      setState(() {
-        _savingCandidateIds.remove(candidate.uid);
-      });
+      if (!mounted) {
+        setState(() {
+          _savingCandidateIds.remove(candidate.uid);
+        });
+      }
     }
   }
 
