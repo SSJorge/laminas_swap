@@ -34,18 +34,24 @@ String displayCardNumber(CardDefinition definition) {
 }
 
 String displayCardLabel(CardDefinition definition) {
-  return '${definition.countryName} #${displayCardNumber(definition)}';
+  if (definition.countryId == fwcCountry.id) {
+    return 'FWC #${displayCardNumber(definition)}';
+  }
+
+  return '${definition.groupName} ${definition.countryCode} '
+      '${definition.countryFlagEmoji} #${displayCardNumber(definition)}';
 }
 
 int compareCardDefinitions(CardDefinition a, CardDefinition b) {
-  final countryCompare = a.countryName.compareTo(b.countryName);
-
-  if (countryCompare != 0) {
-    return countryCompare;
-  }
-
   final countryA = _countryFor(a);
   final countryB = _countryFor(b);
+
+  final countryOrderA = countryA?.firstNumber ?? a.number;
+  final countryOrderB = countryB?.firstNumber ?? b.number;
+
+  if (countryOrderA != countryOrderB) {
+    return countryOrderA.compareTo(countryOrderB);
+  }
 
   final localA = countryA == null ? a.number : a.number - countryA.firstNumber;
   final localB = countryB == null ? b.number : b.number - countryB.firstNumber;

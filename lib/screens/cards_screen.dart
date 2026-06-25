@@ -9,6 +9,7 @@ import '../models/album_group.dart';
 import '../models/card_status.dart';
 import '../services/card_repository.dart';
 import '../utils/card_display_utils.dart';
+import '../utils/card_display_utils.dart';
 
 class CardsScreen extends StatefulWidget {
   const CardsScreen({super.key});
@@ -580,7 +581,7 @@ class _CountrySection extends StatelessWidget {
         key: PageStorageKey('country_${country.id}'),
         initiallyExpanded: initiallyExpanded,
         onExpansionChanged: onExpansionChanged,
-        title: Text(country.name),
+        title: _CountryTitle(country: country),
         subtitle: Text(counts.label),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
@@ -667,6 +668,31 @@ class _CountrySection extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CountryTitle extends StatelessWidget {
+  const _CountryTitle({required this.country});
+
+  final AlbumCountry country;
+
+  @override
+  Widget build(BuildContext context) {
+    if (country.id == fwcCountry.id) {
+      return const Text('FWC');
+    }
+
+    return Row(
+      children: [
+        Text(country.code, style: const TextStyle(fontWeight: FontWeight.w900)),
+        const SizedBox(width: 8),
+        Text(country.flagEmoji, style: const TextStyle(fontSize: 20)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text('- ${country.name}', overflow: TextOverflow.ellipsis),
+        ),
+      ],
     );
   }
 }
