@@ -8,6 +8,7 @@ import '../models/album_country.dart';
 import '../models/album_group.dart';
 import '../models/card_status.dart';
 import '../services/card_repository.dart';
+import '../utils/card_display_utils.dart';
 
 class CardsScreen extends StatefulWidget {
   const CardsScreen({super.key});
@@ -723,7 +724,7 @@ class _CardTile extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      _displayNumberFor(card.definition),
+                      displayCardNumber(card.definition),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: textColor,
                         fontWeight: FontWeight.w900,
@@ -763,20 +764,6 @@ class _CardTile extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _displayNumberFor(CardDefinition definition) {
-    if (definition.countryId == fwcCountry.id) {
-      final displayNumber = definition.number - 1;
-
-      if (displayNumber == 0) {
-        return '00';
-      }
-
-      return displayNumber.toString();
-    }
-
-    return definition.number.toString();
   }
 }
 

@@ -8,6 +8,7 @@ import '../models/confirmed_match.dart';
 import '../services/matching_repository.dart';
 import '../widgets/report_user_button.dart';
 import '../widgets/block_user_button.dart';
+import '../utils/card_display_utils.dart';
 
 class ConfirmedMatchesScreen extends StatefulWidget {
   const ConfirmedMatchesScreen({super.key});
@@ -54,7 +55,7 @@ class _ConfirmedMatchesScreenState extends State<ConfirmedMatchesScreen> {
       return cardId;
     }
 
-    return '${card.countryName} #${card.number}';
+    return displayCardLabel(card);
   }
 
   String _initialFor(String value) {
