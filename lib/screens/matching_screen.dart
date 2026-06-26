@@ -265,30 +265,13 @@ class _DiscoverGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final itemCount = candidates.length + (showAdSlot ? 1 : 0);
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 720;
 
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: itemCount,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: isWide ? 2 : 1,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: isWide ? 1.25 : 1.75,
-          ),
-          itemBuilder: (context, index) {
-            if (showAdSlot && index == itemCount - 1) {
-              return const AdPlaceholderCard();
-            }
-
-            final candidate = candidates[index];
-
-            return _MatchCandidateCard(
+        final cards = <Widget>[
+          for (final candidate in candidates)
+            _MatchCandidateCard(
               candidate: candidate,
               isSaving: isSavingCandidate(candidate),
               initial: initialFor(candidate.displayName),
@@ -298,7 +281,32 @@ class _DiscoverGrid extends StatelessWidget {
               onDislike: () {
                 return onDislike(candidate);
               },
-            );
+            ),
+          if (showAdSlot) const AdPlaceholderCard(),
+        ];
+
+        // En celular: usar Column para que cada tarjeta tenga altura natural.
+        if (!isWide) {
+          return Column(
+            children: [
+              for (final card in cards) ...[card, const SizedBox(height: 12)],
+            ],
+          );
+        }
+
+        // En pantallas grandes: sí usar grilla.
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: cards.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.15,
+          ),
+          itemBuilder: (context, index) {
+            return cards[index];
           },
         );
       },
@@ -332,6 +340,7 @@ class _MatchCandidateCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
@@ -356,6 +365,7 @@ class _MatchCandidateCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 Column(
                   children: [
                     Text(
@@ -385,12 +395,14 @@ class _MatchCandidateCard extends StatelessWidget {
                 ),
               ],
             ),
-            const Spacer(),
+            const SizedBox(height: 10),
             const Text(
               'Detalle después del match mutuo.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
+
+            // Botones principales siempre visibles.
             Row(
               children: [
                 Expanded(
@@ -408,25 +420,27 @@ class _MatchCandidateCard extends StatelessWidget {
                     label: const Text('Like'),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: BlockUserButton(
-                    blockedUid: candidate.uid,
-                    blockedDisplayName: candidate.displayName,
-                    onBlocked: onDislike,
-                  ),
-                ),
               ],
             ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ReportUserButton(
-                reportedUid: candidate.uid,
-                reportedDisplayName: candidate.displayName,
-                source: 'discover',
-              ),
+            const SizedBox(height: 6),
+
+            // Botones secundarios abajo, sin robar espacio al Like.
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 0,
+              children: [
+                BlockUserButton(
+                  blockedUid: candidate.uid,
+                  blockedDisplayName: candidate.displayName,
+                  onBlocked: onDislike,
+                ),
+                ReportUserButton(
+                  reportedUid: candidate.uid,
+                  reportedDisplayName: candidate.displayName,
+                  source: 'discover',
+                ),
+              ],
             ),
           ],
         ),

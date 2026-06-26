@@ -210,6 +210,7 @@ class _PlanCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -254,30 +255,29 @@ class _PlanCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Expanded(
-              child: ListView(
-                physics: const NeverScrollableScrollPhysics(),
-                padding: EdgeInsets.zero,
-                children: [
-                  for (final feature in plan.features)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.check_circle,
-                            size: 18,
-                            color: Color(0xFF0B7A3B),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(feature)),
-                        ],
+
+            // Importante: NO usar Expanded ni ListView aquí.
+            for (final feature in plan.features)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      size: 18,
+                      color: Color(0xFF0B7A3B),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        feature,
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),
