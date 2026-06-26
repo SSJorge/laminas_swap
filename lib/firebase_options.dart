@@ -21,20 +21,11 @@ class DefaultFirebaseOptions {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for android - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for windows - '
@@ -60,5 +51,31 @@ class DefaultFirebaseOptions {
     authDomain: 'laminas-swap.firebaseapp.com',
     storageBucket: 'laminas-swap.firebasestorage.app',
     measurementId: 'G-WWLVBMN4QT',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyDrMAAbN9dp7DhMkHEByIVuE1Ywu6tohFk',
+    appId: '1:1040924011798:ios:80f6e31ce3b278302ab437',
+    messagingSenderId: '1040924011798',
+    projectId: 'laminas-swap',
+    storageBucket: 'laminas-swap.firebasestorage.app',
+    iosBundleId: 'com.example.laminasSwap',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyDrMAAbN9dp7DhMkHEByIVuE1Ywu6tohFk',
+    appId: '1:1040924011798:ios:80f6e31ce3b278302ab437',
+    messagingSenderId: '1040924011798',
+    projectId: 'laminas-swap',
+    storageBucket: 'laminas-swap.firebasestorage.app',
+    iosBundleId: 'com.example.laminasSwap',
+  );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyDZ49YQFlJ1khgl1SCX3fSxdjDoc_rHFGo',
+    appId: '1:1040924011798:android:51ed05b885d1e6f32ab437',
+    messagingSenderId: '1040924011798',
+    projectId: 'laminas-swap',
+    storageBucket: 'laminas-swap.firebasestorage.app',
   );
 }

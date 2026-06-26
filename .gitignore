@@ -63,3 +63,6 @@ app.*.map.json
 
 # Firebase local/cache
 .firebase/
+
+android/key.properties
+android/upload-keystore.jks

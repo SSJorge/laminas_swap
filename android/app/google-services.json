@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1040924011798",
+    "project_id": "laminas-swap",
+    "storage_bucket": "laminas-swap.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1040924011798:android:51ed05b885d1e6f32ab437",
+        "android_client_info": {
+          "package_name": "cl.truequegol.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZ49YQFlJ1khgl1SCX3fSxdjDoc_rHFGo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
