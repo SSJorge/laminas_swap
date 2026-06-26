@@ -92,7 +92,7 @@ class _ReceivedLikesScreenState extends State<ReceivedLikesScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(message)));
     } finally {
-      if (!mounted) {
+      if (mounted) {
         setState(() {
           _savingCandidateIds.remove(candidate.uid);
         });
@@ -269,30 +269,13 @@ class _ReceivedLikesGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final itemCount = candidates.length + (showAdSlot ? 1 : 0);
-
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 720;
 
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: itemCount,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: isWide ? 2 : 1,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: isWide ? 1.25 : 1.75,
-          ),
-          itemBuilder: (context, index) {
-            if (showAdSlot && index == itemCount - 1) {
-              return const AdPlaceholderCard();
-            }
-
-            final candidate = candidates[index];
-
-            return _ReceivedLikeCard(
+        final cards = <Widget>[
+          for (final candidate in candidates)
+            _ReceivedLikeCard(
               candidate: candidate,
               isSaving: isSavingCandidate(candidate),
               initial: initialFor(candidate.displayName),
@@ -302,7 +285,32 @@ class _ReceivedLikesGrid extends StatelessWidget {
               onDislike: () {
                 return onDislike(candidate);
               },
-            );
+            ),
+          if (showAdSlot) const AdPlaceholderCard(),
+        ];
+
+        // En celular: tarjetas con altura natural.
+        if (!isWide) {
+          return Column(
+            children: [
+              for (final card in cards) ...[card, const SizedBox(height: 12)],
+            ],
+          );
+        }
+
+        // En pantallas grandes: grilla.
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: cards.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.15,
+          ),
+          itemBuilder: (context, index) {
+            return cards[index];
           },
         );
       },
@@ -336,6 +344,7 @@ class _ReceivedLikeCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Row(
               children: [
@@ -360,6 +369,7 @@ class _ReceivedLikeCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 Column(
                   children: [
                     Text(
@@ -389,19 +399,21 @@ class _ReceivedLikeCard extends StatelessWidget {
                 ),
               ],
             ),
-            const Spacer(),
+            const SizedBox(height: 10),
             const Text(
               'Detalle después del match mutuo.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
+
+            // Acciones principales.
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: isSaving ? null : onDislike,
                     icon: const Icon(Icons.close),
-                    label: const Text('Dislike'),
+                    label: const Text('Rechazar'),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -414,23 +426,25 @@ class _ReceivedLikeCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: BlockUserButton(
-                blockedUid: candidate.uid,
-                blockedDisplayName: candidate.displayName,
-                onBlocked: onDislike,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ReportUserButton(
-                reportedUid: candidate.uid,
-                reportedDisplayName: candidate.displayName,
-                source: 'received_likes',
-              ),
+            const SizedBox(height: 6),
+
+            // Acciones secundarias.
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 8,
+              runSpacing: 0,
+              children: [
+                BlockUserButton(
+                  blockedUid: candidate.uid,
+                  blockedDisplayName: candidate.displayName,
+                  onBlocked: onDislike,
+                ),
+                ReportUserButton(
+                  reportedUid: candidate.uid,
+                  reportedDisplayName: candidate.displayName,
+                  source: 'received_likes',
+                ),
+              ],
             ),
           ],
         ),

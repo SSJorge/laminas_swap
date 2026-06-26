@@ -157,3 +157,17 @@ No uses marcas protegidas como keywords para captar búsquedas. Por ejemplo, no 
 
 Usa algo como:
 “app independiente para registrar láminas coleccionables, encontrar personas compatibles y coordinar intercambios de forma privada”
+
+Hola gente
+
+Creé una app independiente para hacer match con otras personas e intercambiar láminas de forma más fácil
+
+La idea es simple: marcas manualmente las láminas que tienes, las que te faltan y las repetidas (tiene botones para hacer el llenado mas rápido), luego la app busca personas de tu comuna con las que puedas hacer intercambio y te muestra qué láminas podrían cambiar entre ustedes
+
+Todavía está en una versión inicial  pero ya cumple su propósito principal. Planeo subirla a la Play/App Store, pero por ahora se puede añadir a la pantalla principal del celu como si fuera una app.
+
+ Cualquier comentario, error o sugerencia me ayudaría mucho para seguir mejorándola 🙌
+
+ 
+
+link: truequegol.clLes dejo pantallazos de ejemplo
