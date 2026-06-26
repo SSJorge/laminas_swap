@@ -66,3 +66,4 @@ app.*.map.json
 
 android/key.properties
 android/upload-keystore.jks
+lib/firebase_options.dart

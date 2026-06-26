@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/user_repository.dart';
+import '../widgets/feedback_footer.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.initialRegisterMode = true});
@@ -233,6 +234,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             : 'Crear cuenta nueva',
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const FeedbackFooter(),
                   ],
                 ),
               ),

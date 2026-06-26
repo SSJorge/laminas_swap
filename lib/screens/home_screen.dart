@@ -12,6 +12,7 @@ import 'profile_screen.dart';
 import 'received_likes_screen.dart';
 import 'user_search_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../widgets/feedback_footer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -251,6 +252,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                 ),
+                const SizedBox(height: 24),
+                const FeedbackFooter(),
               ],
             ),
           ),

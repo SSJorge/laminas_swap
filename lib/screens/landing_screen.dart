@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'login_screen.dart';
+import '../widgets/feedback_footer.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
@@ -85,6 +86,17 @@ class LandingScreen extends StatelessWidget {
                       style: TextStyle(color: Colors.white70, height: 1.35),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Text(
+                      'Versión PWA en validación inicial',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const FeedbackFooter(dark: true),
                   const SizedBox(height: 16),
                   Center(
                     child: Text(

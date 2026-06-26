@@ -10,6 +10,7 @@ import '../utils/display_name_utils.dart';
 import '../data/daily_limits.dart';
 import '../widgets/daily_limits_card.dart';
 import '../widgets/delete_account_button.dart';
+import '../widgets/feedback_footer.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -409,6 +410,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const Divider(),
                 const SizedBox(height: 12),
                 const DeleteAccountButton(),
+                const SizedBox(height: 24),
+                const FeedbackFooter(),
               ],
             ),
           ),
