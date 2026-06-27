@@ -38,7 +38,7 @@ class DailyLimitDefinition {
 const Map<DailyLimitType, DailyLimitDefinition> dailyLimitDefinitions = {
   DailyLimitType.like: DailyLimitDefinition(
     field: 'likesUsed',
-    freeBaseLimit: 3,
+    freeBaseLimit: 5,
     rewardedAdExtraLimit: 3,
     premiumLimit: 15,
     label: 'Likes',
@@ -52,14 +52,14 @@ const Map<DailyLimitType, DailyLimitDefinition> dailyLimitDefinitions = {
   ),
   DailyLimitType.userSearch: DailyLimitDefinition(
     field: 'userSearchesUsed',
-    freeBaseLimit: 3,
+    freeBaseLimit: 5,
     rewardedAdExtraLimit: 3,
     premiumLimit: 15,
     label: 'Búsquedas exactas',
   ),
   DailyLimitType.communeChange: DailyLimitDefinition(
     field: 'communeChangesUsed',
-    freeBaseLimit: 3,
+    freeBaseLimit: 5,
     rewardedAdExtraLimit: 1,
     premiumLimit: 10,
     label: 'Cambios de comuna',
