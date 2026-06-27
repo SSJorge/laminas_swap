@@ -55,7 +55,7 @@ const chileRegions = <ChileRegion>[
 
 ChileRegion get defaultChileRegion => chileRegions.first;
 
-String get defaultComuna => 'Quilpué';
+String get defaultComuna => 'Viña del Mar';
 
 ChileRegion findRegionById(String? regionId) {
   return chileRegions.firstWhere(
