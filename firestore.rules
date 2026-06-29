@@ -206,6 +206,47 @@ service cloud.firestore {
         && request.resource.data.source.size() <= 50
         && request.resource.data.status == 'open';
     }
+    function currentUserPublicProfileExists() {
+  return signedIn() &&
+    exists(/databases/$(database)/documents/publicProfiles/$(request.auth.uid));
+}
+
+function currentUserPublicProfile() {
+  return get(/databases/$(database)/documents/publicProfiles/$(request.auth.uid)).data;
+}
+
+function communePostHasOnlyAllowedFields() {
+  return request.resource.data.keys().hasOnly([
+    'uid',
+    'displayName',
+    'comuna',
+    'communeKey',
+    'dayKey',
+    'text',
+    'createdAt'
+  ]);
+}
+
+function canReadCommunePosts(communeKey) {
+  return currentUserPublicProfileExists() &&
+    currentUserPublicProfile().comunaKey == communeKey;
+}
+
+function communePostIsValid(communeKey, postId) {
+  return currentUserPublicProfileExists() &&
+    request.resource.data.uid == request.auth.uid &&
+    request.resource.data.displayName == currentUserPublicProfile().displayName &&
+    request.resource.data.comuna == currentUserPublicProfile().comuna &&
+    request.resource.data.communeKey == communeKey &&
+    request.resource.data.communeKey == currentUserPublicProfile().comunaKey &&
+    request.resource.data.dayKey is string &&
+    request.resource.data.dayKey.size() == 8 &&
+    postId == request.auth.uid + '_' + request.resource.data.dayKey &&
+    request.resource.data.text is string &&
+    request.resource.data.text.size() > 0 &&
+    request.resource.data.text.size() <= 220 &&
+    request.resource.data.createdAt == request.time;
+}
 
     match /users/{uid} {
       allow create: if isOwner(uid);
@@ -277,6 +318,19 @@ service cloud.firestore {
     && publicProfileHasNoPrivateFields();
 
   allow delete: if isOwner(uid);
+}
+match /communePosts/{communeKey}/posts/{postId} {
+  allow read: if canReadCommunePosts(communeKey);
+
+  allow create: if signedIn() &&
+    communePostHasOnlyAllowedFields() &&
+    communePostIsValid(communeKey, postId) &&
+    !exists(/databases/$(database)/documents/communePosts/$(communeKey)/posts/$(postId));
+
+  allow update: if false;
+
+  allow delete: if signedIn() &&
+    resource.data.uid == request.auth.uid;
 }
 
     match /privateProfiles/{uid} {
