@@ -67,6 +67,46 @@ class _CommunePostsScreenState extends State<CommunePostsScreen> {
       return;
     }
 
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return;
+    }
+
+    setState(() {
+      _isCreating = true;
+    });
+
+    try {
+      final alreadyPosted = await _postRepository.hasTodayPost(user.uid);
+
+      if (!mounted) {
+        return;
+      }
+
+      if (alreadyPosted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ya publicaste hoy en tu comuna.')),
+        );
+        return;
+      }
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+      return;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCreating = false;
+        });
+      }
+    }
+
     final text = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,

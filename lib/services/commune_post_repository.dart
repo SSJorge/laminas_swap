@@ -93,11 +93,11 @@ class CommunePostRepository {
     final postId = '${uid}_$dayKey';
     final postRef = _postsRef(profile.communeKey).doc(postId);
 
-    await _db.runTransaction((transaction) async {
+    final wasCreated = await _db.runTransaction<bool>((transaction) async {
       final existingPost = await transaction.get(postRef);
 
       if (existingPost.exists) {
-        throw Exception('Ya publicaste hoy en ${profile.comuna}.');
+        return false;
       }
 
       transaction.set(postRef, {
@@ -109,7 +109,23 @@ class CommunePostRepository {
         'text': cleanText,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      return true;
     });
+
+    if (!wasCreated) {
+      throw Exception('Ya publicaste hoy en ${profile.comuna}.');
+    }
+  }
+
+  Future<bool> hasTodayPost(String uid) async {
+    final profile = await loadCurrentUserProfile(uid);
+    final dayKey = _todayDayKey();
+    final postId = '${uid}_$dayKey';
+
+    final postDoc = await _postsRef(profile.communeKey).doc(postId).get();
+
+    return postDoc.exists;
   }
 
   Future<void> deletePost(CommunePost post) async {
