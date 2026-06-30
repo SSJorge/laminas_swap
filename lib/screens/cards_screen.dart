@@ -9,6 +9,8 @@ import '../models/album_group.dart';
 import '../models/card_status.dart';
 import '../services/card_repository.dart';
 import '../utils/card_display_utils.dart';
+import '../utils/sticker_import_mapper.dart';
+import '../utils/sticker_list_import_parser.dart';
 
 class CardsScreen extends StatefulWidget {
   const CardsScreen({super.key});
@@ -19,6 +21,7 @@ class CardsScreen extends StatefulWidget {
 
 class _CardsScreenState extends State<CardsScreen> {
   late final CardRepository _cardRepository;
+  final TextEditingController _importListController = TextEditingController();
 
   final Set<String> _savingCountryIds = <String>{};
   final Set<String> _savingGroupIds = <String>{};
@@ -32,6 +35,12 @@ class _CardsScreenState extends State<CardsScreen> {
     super.initState();
     _cardRepository = CardRepository(FirebaseFirestore.instance);
     _loadExpansionState();
+  }
+
+  @override
+  void dispose() {
+    _importListController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadExpansionState() async {
@@ -108,6 +117,149 @@ class _CardsScreenState extends State<CardsScreen> {
         );
       },
     );
+  }
+
+  Future<void> _showImportListDialog({
+    required String uid,
+    required Map<String, CardStatus> currentStatuses,
+  }) async {
+    _importListController.clear();
+
+    final imported = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        StickerImportPreview? preview;
+        bool isSaving = false;
+
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            void refreshPreview() {
+              final parsed = parseStickerImportList(_importListController.text);
+              final nextPreview = buildStickerImportPreview(parsed);
+
+              setDialogState(() {
+                preview = nextPreview;
+              });
+            }
+
+            Future<void> confirmImport() async {
+              final selectedPreview = preview;
+
+              if (selectedPreview == null || !selectedPreview.hasAnyData) {
+                return;
+              }
+
+              setDialogState(() {
+                isSaving = true;
+              });
+
+              try {
+                await _cardRepository.importCardStatuses(
+                  uid: uid,
+                  importedStatuses: selectedPreview.statusesByCardId,
+                  currentStatuses: currentStatuses,
+                );
+
+                if (!dialogContext.mounted) return;
+                Navigator.of(dialogContext).pop(true);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error importando lista: $e')),
+                  );
+                }
+
+                if (dialogContext.mounted) {
+                  setDialogState(() {
+                    isSaving = false;
+                  });
+                }
+              }
+            }
+
+            final currentPreview = preview;
+
+            return AlertDialog(
+              title: const Text('Importar lista'),
+              content: SizedBox(
+                width: 560,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Pega una lista con secciones "Me faltan" y/o "Repetidas". '
+                        'Las cantidades tipo "(×2)" se ignoran.',
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _importListController,
+                        minLines: 8,
+                        maxLines: 14,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: 'Pega aquí tu lista...',
+                        ),
+                        onChanged: (_) {
+                          if (preview != null) {
+                            refreshPreview();
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton.tonalIcon(
+                        onPressed: isSaving ? null : refreshPreview,
+                        icon: const Icon(Icons.fact_check_outlined),
+                        label: const Text('Revisar lista'),
+                      ),
+                      if (currentPreview != null) ...[
+                        const SizedBox(height: 12),
+                        _ImportPreviewBox(preview: currentPreview),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving
+                      ? null
+                      : () {
+                          Navigator.of(dialogContext).pop(false);
+                        },
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton.icon(
+                  onPressed:
+                      isSaving ||
+                          currentPreview == null ||
+                          !currentPreview.hasAnyData
+                      ? null
+                      : confirmImport,
+                  icon: isSaving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.upload_file),
+                  label: Text(isSaving ? 'Importando...' : 'Importar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (!mounted) return;
+
+    if (imported == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lista importada correctamente.')),
+      );
+    }
   }
 
   Future<void> _changeSingleCard({
@@ -295,6 +447,41 @@ class _CardsScreenState extends State<CardsScreen> {
                           _SummaryChip(
                             label: 'Repetidas',
                             value: duplicateCount,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Importar lista',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Pega una lista de faltantes y repetidas para autocompletar tu álbum '
+                            'en segundos.',
+                          ),
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: FilledButton.icon(
+                              onPressed: () {
+                                _showImportListDialog(
+                                  uid: user.uid,
+                                  currentStatuses: statuses,
+                                );
+                              },
+                              icon: const Icon(Icons.upload_file),
+                              label: const Text('Importar lista'),
+                            ),
                           ),
                         ],
                       ),
@@ -926,4 +1113,79 @@ class CardDefinitionViewModel {
 
   final CardDefinition definition;
   final CardStatus status;
+}
+
+class _ImportPreviewBox extends StatelessWidget {
+  const _ImportPreviewBox({required this.preview});
+
+  final StickerImportPreview preview;
+
+  @override
+  Widget build(BuildContext context) {
+    final unknownSample = preview.unknownItems.take(8).join(', ');
+    final unknownExtra = preview.unknownItems.length > 8
+        ? ' y ${preview.unknownItems.length - 8} más'
+        : '';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Resultado detectado',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Text('Faltantes: ${preview.missingCount}'),
+          Text('Obtenidas: ${preview.obtainedCount}'),
+          Text('Repetidas: ${preview.duplicateCount}'),
+          const SizedBox(height: 8),
+          const Text(
+            'Importante: las láminas que no aparezcan como faltantes ni '
+            'repetidas quedarán marcadas como obtenidas.',
+          ),
+          if (!preview.hasAnyData) ...[
+            const SizedBox(height: 8),
+            Text(
+              'No detecté faltantes ni repetidas. Revisa que la lista tenga '
+              'una sección "Me faltan" o "Repetidas".',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          if (preview.unknownItems.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Se ignorarán ${preview.unknownItems.length} láminas no '
+              'encontradas en el álbum: $unknownSample$unknownExtra.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          if (preview.rawResult.warnings.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            for (final warning in preview.rawResult.warnings)
+              Text(
+                warning,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
 }

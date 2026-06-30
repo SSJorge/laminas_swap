@@ -24,6 +24,87 @@ class CardRepository {
     );
   }
 
+  Future<void> importCardStatuses({
+    required String uid,
+    required Map<String, CardStatus> importedStatuses,
+    required Map<String, CardStatus> currentStatuses,
+  }) async {
+    if (importedStatuses.isEmpty) {
+      return;
+    }
+
+    final updatedStatuses = Map<String, CardStatus>.from(currentStatuses);
+    final pendingWrites = <_PendingCardStatusWrite>[];
+
+    for (final card in allCardDefinitions) {
+      final importedStatus = importedStatuses[card.id];
+
+      if (importedStatus == null) {
+        continue;
+      }
+
+      final currentStatus = currentStatuses[card.id] ?? CardStatus.missing;
+
+      updatedStatuses[card.id] = importedStatus;
+
+      if (currentStatus == importedStatus) {
+        continue;
+      }
+
+      pendingWrites.add(
+        _PendingCardStatusWrite(card: card, status: importedStatus),
+      );
+    }
+
+    final summary = _buildSummary(updatedStatuses);
+    final now = FieldValue.serverTimestamp();
+
+    const maxWritesPerBatch = 450;
+
+    var batch = _db.batch();
+    var writeCount = 0;
+
+    Future<void> commitCurrentBatchIfNeeded({bool force = false}) async {
+      if (writeCount == 0 && !force) {
+        return;
+      }
+
+      await batch.commit();
+
+      batch = _db.batch();
+      writeCount = 0;
+    }
+
+    for (final pendingWrite in pendingWrites) {
+      _writeCardStatus(
+        batch: batch,
+        uid: uid,
+        card: pendingWrite.card,
+        status: pendingWrite.status,
+        now: now,
+      );
+
+      writeCount++;
+
+      if (writeCount >= maxWritesPerBatch) {
+        await commitCurrentBatchIfNeeded();
+      }
+    }
+
+    _writeUserSummary(batch: batch, uid: uid, summary: summary, now: now);
+    writeCount++;
+
+    _writePublicProfileSummary(
+      batch: batch,
+      uid: uid,
+      summary: summary,
+      now: now,
+    );
+    writeCount++;
+
+    await commitCurrentBatchIfNeeded(force: true);
+  }
+
   Future<void> setCardStatus({
     required String uid,
     required CardDefinition card,
@@ -228,4 +309,11 @@ class _CardsSummary {
   final List<String> missingIds;
   final List<String> duplicateIds;
   final int obtainedCount;
+}
+
+class _PendingCardStatusWrite {
+  const _PendingCardStatusWrite({required this.card, required this.status});
+
+  final CardDefinition card;
+  final CardStatus status;
 }
