@@ -277,14 +277,15 @@ class MatchingRepository {
 
     final myData = myProfileDoc.data() ?? <String, dynamic>{};
 
-    final myComunaKey = _effectiveComunaKey(myData);
+    // final myComunaKey = _effectiveComunaKey(myData);
+    final myRegionKey = _effectiveRegionKey(myData);
     final myMissingIds = _readStringSet(myData['missingIds']);
     final myDuplicateIds = _readStringSet(myData['duplicateIds']);
     final blockRepository = BlockRepository(_db);
     final myBlockedIds = await blockRepository.getBlockedUserIds(uid);
 
-    if (myComunaKey.isEmpty) {
-      throw Exception('Primero guarda tu comuna en Mi perfil.');
+    if (myRegionKey.isEmpty) {
+      throw Exception('Primero guarda tu región en Mi perfil.');
     }
 
     if (myMissingIds.isEmpty && myDuplicateIds.isEmpty) {
@@ -326,9 +327,14 @@ class MatchingRepository {
       }
 
       final data = doc.data();
-      final otherComunaKey = _effectiveComunaKey(data);
+      // final otherComunaKey = _effectiveComunaKey(data);
 
-      if (otherComunaKey.isEmpty || otherComunaKey != myComunaKey) {
+      // if (otherComunaKey.isEmpty || otherComunaKey != myComunaKey) {
+      //   continue;
+      // }
+      final otherRegionKey = _effectiveRegionKey(data);
+
+      if (otherRegionKey.isEmpty || otherRegionKey != myRegionKey) {
         continue;
       }
 
@@ -560,6 +566,16 @@ class MatchingRepository {
     }
 
     return _normalizeComuna(_readString(data['comuna']));
+  }
+
+  String _effectiveRegionKey(Map<String, dynamic> data) {
+    final regionKey = _readString(data['regionKey']);
+
+    if (regionKey.isNotEmpty) {
+      return regionKey;
+    }
+
+    return _normalizeComuna(_readString(data['region']));
   }
 
   String _normalizeComuna(String value) {

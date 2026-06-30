@@ -153,7 +153,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
                   icon: Icons.people_outline,
                   title: 'Todavía no hay candidatos',
                   message:
-                      'Necesitas otros usuarios visibles en tu misma comuna con faltantes o repetidas compatibles.',
+                      'Necesitas otros usuarios visibles en tu misma región con faltantes o repetidas compatibles.',
                   onRefresh: _refresh,
                 );
               }
@@ -238,7 +238,7 @@ class _MatchingInfoCard extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Text(
-          'Aquí solo ves cantidades de compatibilidad. '
+          'Aquí ves usuarios de tu región con compatibilidad. '
           'Las láminas específicas, descripción y contacto se muestran recién después de un match mutuo.',
         ),
       ),
