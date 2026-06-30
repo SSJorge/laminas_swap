@@ -202,8 +202,7 @@ class _HeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 const Text(
-                  'Marca tus faltantes y repetidas, descubre posibles intercambios '
-                  'por comuna y comparte tu contacto solo con matches específicos.',
+                  'Pega tu lista de faltantes y repetidas, haz MATCH con amigos o gente de tu zona y descubre posibles intercambios',
                   style: TextStyle(
                     color: Color(0xFF405247),
                     fontSize: 16,
@@ -412,7 +411,8 @@ class _HowItWorksSection extends StatelessWidget {
         _FeatureItem(
           icon: Icons.checklist,
           title: 'Marca tu colección',
-          text: 'Registra faltantes, obtenidas y repetidas con toques rápidos.',
+          text:
+              'Registra faltantes, obtenidas y repetidas pegando tu lista o con toques rápidos.',
         ),
         _FeatureItem(
           icon: Icons.groups_2_outlined,
