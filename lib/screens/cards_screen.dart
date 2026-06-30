@@ -338,6 +338,45 @@ class _CardsScreenState extends State<CardsScreen> {
                     },
                   ),
                   const SizedBox(height: 12),
+                  _CountrySection(
+                    country: cocaColaCountry,
+                    statuses: statuses,
+                    isSavingCountry: _savingCountryIds.contains(
+                      cocaColaCountry.id,
+                    ),
+                    savingCardIds: _savingCardIds,
+                    initiallyExpanded: _isExpanded(
+                      uid: user.uid,
+                      tileId: 'country_${cocaColaCountry.id}',
+                      defaultValue: false,
+                    ),
+                    onExpansionChanged: (expanded) {
+                      _setExpanded(
+                        uid: user.uid,
+                        tileId: 'country_${cocaColaCountry.id}',
+                        expanded: expanded,
+                      );
+                    },
+                    onCardTap: ({required card, required newStatus}) {
+                      return _changeSingleCard(
+                        context: context,
+                        uid: user.uid,
+                        card: card,
+                        newStatus: newStatus,
+                        currentStatuses: statuses,
+                      );
+                    },
+                    onShiftCountry: (direction) {
+                      return _shiftCountry(
+                        context: context,
+                        uid: user.uid,
+                        country: cocaColaCountry,
+                        direction: direction,
+                        currentStatuses: statuses,
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
                   for (final group in albumGroups)
                     _GroupSection(
                       group: group,

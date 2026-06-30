@@ -22,6 +22,15 @@ const fwcCountry = AlbumCountry(
   firstNumber: 1,
   cardCount: 20,
 );
+const cocaColaCountry = AlbumCountry(
+  id: 'cc',
+  name: 'Coca-Cola',
+  code: 'CC',
+  flagEmoji: '',
+  groupName: 'Coca-Cola',
+  firstNumber: 1,
+  cardCount: 14,
+);
 
 const _groupLetters = [
   'A',
@@ -119,11 +128,13 @@ final albumGroups = List.generate(_groupLetters.length, (groupIndex) {
 
 final albumCountries = [
   fwcCountry,
+  cocaColaCountry,
   ...albumGroups.expand((group) => group.countries),
 ];
 
 final allCardDefinitions = [
   ...fwcCountry.cards,
+  ...cocaColaCountry.cards,
   ...albumGroups.expand((group) => group.cards),
 ];
 
