@@ -130,7 +130,13 @@ class _LandingHeader extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: const Icon(Icons.style, color: Color(0xFF0B7A3B)),
+          child: Padding(
+            padding: const EdgeInsets.all(7),
+            child: Image.asset(
+              'assets/icons/app_icon.png',
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
         const SizedBox(width: 12),
         const Expanded(
@@ -245,7 +251,7 @@ class _HeroCard extends StatelessWidget {
               ],
             );
 
-            final visual = const _PitchPreview();
+            final visual = const _LandingHeroImage();
 
             if (isWide) {
               return Row(
@@ -262,139 +268,6 @@ class _HeroCard extends StatelessWidget {
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-class _PitchPreview extends StatelessWidget {
-  const _PitchPreview();
-
-  @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1.05,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF0B7A3B),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white, width: 3),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 20,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Center(
-              child: Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    width: 3,
-                  ),
-                ),
-              ),
-            ),
-            Center(
-              child: Container(
-                width: 3,
-                color: Colors.white.withValues(alpha: 0.85),
-              ),
-            ),
-            Positioned(
-              left: 18,
-              top: 42,
-              bottom: 42,
-              child: Container(
-                width: 42,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    width: 3,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            Positioned(
-              right: 18,
-              top: 42,
-              bottom: 42,
-              child: Container(
-                width: 42,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    width: 3,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            const Positioned(
-              left: 24,
-              top: 24,
-              child: _MiniCard(label: 'Matches', value: '12'),
-            ),
-            const Positioned(
-              right: 24,
-              bottom: 24,
-              child: _MiniCard(label: 'Faltantes', value: '320'),
-            ),
-            const Positioned(
-              left: 24,
-              bottom: 24,
-              child: _MiniCard(label: 'Repetidas', value: '60'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MiniCard extends StatelessWidget {
-  const _MiniCard({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 104,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.96),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Color(0xFF0B7A3B),
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF07130D),
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -545,6 +418,43 @@ class _FeatureItem extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LandingHeroImage extends StatelessWidget {
+  const _LandingHeroImage();
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: 1.05,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/landing_hero.webp',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white, width: 3),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 20,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
