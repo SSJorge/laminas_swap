@@ -94,6 +94,8 @@ class UserSearchRepository {
       uid: targetUid,
       displayName: targetDisplayName.isEmpty ? cleanName : targetDisplayName,
       comuna: _readString(targetData['comuna']),
+      //cambio mio
+      publicDescription: _readString(targetData['publicDescription']),
       iCanGiveIds: iCanGiveIds,
       theyCanGiveIds: theyCanGiveIds,
       lastActiveAt: _readDateTime(targetData['lastActiveAt']),

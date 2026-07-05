@@ -10,6 +10,7 @@ import '../widgets/ad_placeholder_card.dart';
 import '../widgets/daily_limits_card.dart';
 import '../widgets/report_user_button.dart';
 import '../widgets/block_user_button.dart';
+import '../widgets/public_description_preview.dart';
 
 class ReceivedLikesScreen extends StatefulWidget {
   const ReceivedLikesScreen({super.key});
@@ -400,10 +401,7 @@ class _ReceivedLikeCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            const Text(
-              'Detalle después del match mutuo.',
-              textAlign: TextAlign.center,
-            ),
+            PublicDescriptionPreview(description: candidate.publicDescription),
             const SizedBox(height: 10),
 
             // Acciones principales.

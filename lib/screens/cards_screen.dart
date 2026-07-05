@@ -253,9 +253,9 @@ class _CardsScreenState extends State<CardsScreen> {
       },
     );
 
-    if (!mounted) return;
-
+    if (!context.mounted) return;
     if (imported == true) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lista importada correctamente.')),
       );

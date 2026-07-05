@@ -10,6 +10,7 @@ import '../widgets/ad_placeholder_card.dart';
 import '../widgets/daily_limits_card.dart';
 import '../widgets/report_user_button.dart';
 import '../widgets/block_user_button.dart';
+import '../widgets/public_description_preview.dart';
 
 class MatchingScreen extends StatefulWidget {
   const MatchingScreen({super.key});
@@ -239,7 +240,8 @@ class _MatchingInfoCard extends StatelessWidget {
         padding: EdgeInsets.all(16),
         child: Text(
           'Aquí ves usuarios de tu región con compatibilidad. '
-          'Las láminas específicas, descripción y contacto se muestran recién después de un match mutuo.',
+          'La descripción pública puede verse antes del match. '
+          'Las láminas específicas, descripción privada y contacto se muestran después de un match mutuo.',
         ),
       ),
     );
@@ -396,10 +398,7 @@ class _MatchCandidateCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            const Text(
-              'Detalle después del match mutuo.',
-              textAlign: TextAlign.center,
-            ),
+            PublicDescriptionPreview(description: candidate.publicDescription),
             const SizedBox(height: 10),
 
             // Botones principales siempre visibles.

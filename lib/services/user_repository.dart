@@ -228,6 +228,7 @@ class UserRepository {
         'duplicateIds': [],
         'lastActiveAt': now,
         'profileVisible': true,
+        'publicDescription': '',
       });
 
       transaction.set(privateProfileRef, {'description': '', 'updatedAt': now});
@@ -258,6 +259,7 @@ class UserRepository {
     required bool contactVisible,
     required bool profileVisible,
     required String description,
+    required String publicDescription,
   }) async {
     final cleanName = validateDisplayName(displayName);
     final cleanNameKey = displayNameKeyFrom(cleanName);
@@ -274,6 +276,13 @@ class UserRepository {
     final cleanComunaKey = _normalizeLocation(cleanComuna);
     final cleanContactType = _normalizeContactType(contactType);
     final cleanDescription = description.trim();
+    final cleanPublicDescription = publicDescription.trim();
+
+    if (cleanPublicDescription.length > profileDescriptionMaxLength) {
+      throw Exception(
+        'La descripción pública no puede superar $profileDescriptionMaxLength caracteres.',
+      );
+    }
 
     if (cleanDescription.length > profileDescriptionMaxLength) {
       throw Exception(
@@ -426,8 +435,11 @@ class UserRepository {
         'locationPrecision': 'comuna',
         'lastActiveAt': now,
         'profileVisible': profileVisible,
+        'publicDescription': cleanPublicDescription.isEmpty
+            ? FieldValue.delete()
+            : cleanPublicDescription,
 
-        // Limpieza: nada privado ni descripción en publicProfiles.
+        // Limpieza: nada privado ni contacto en publicProfiles.
         'description': FieldValue.delete(),
         'contactVisible': FieldValue.delete(),
         'publicContactType': FieldValue.delete(),

@@ -23,6 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _displayNameController = TextEditingController();
   final _phoneDigitsController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _publicDescriptionController = TextEditingController();
 
   String _selectedRegionId = 'valparaiso';
   String _selectedComuna = 'Quilpué';
@@ -52,6 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _displayNameController.dispose();
     _phoneDigitsController.dispose();
     _descriptionController.dispose();
+    _publicDescriptionController.dispose();
     super.dispose();
   }
 
@@ -73,13 +75,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _contactType = contactTypeEmail;
         _profileVisible = true;
         _descriptionController.text = '';
+        _publicDescriptionController.text = '';
         return;
       }
 
       _displayNameController.text = data['displayName'] ?? '';
       _contactType = _safeContactType(data['contactType']);
       _profileVisible = data['profileVisible'] ?? true;
-      _descriptionController.text = data['description'] ?? '';
+      final privateProfileDoc = await _db
+          .collection('privateProfiles')
+          .doc(user.uid)
+          .get();
+
+      final privateProfileData = privateProfileDoc.data() ?? {};
+
+      _descriptionController.text =
+          (privateProfileData['description'] as String?) ??
+          (data['description'] as String?) ??
+          '';
+
+      final publicProfileDoc = await _db
+          .collection('publicProfiles')
+          .doc(user.uid)
+          .get();
+
+      final publicProfileData = publicProfileDoc.data() ?? {};
+
+      _publicDescriptionController.text =
+          (publicProfileData['publicDescription'] as String?) ?? '';
 
       final contactValue = data['contactValue'];
 
@@ -149,6 +172,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         contactVisible: false,
         profileVisible: _profileVisible,
         description: _descriptionController.text,
+        publicDescription: _publicDescriptionController.text,
       );
 
       if (!mounted) return;
@@ -357,13 +381,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 const SizedBox(height: 12),
                 TextField(
+                  controller: _publicDescriptionController,
+                  maxLength: profileDescriptionMaxLength,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Descripción pública',
+                    hintText: 'Ej: Vendo Messi',
+                    helperText:
+                        'Visible antes del match. No escribas teléfono, WhatsApp, Instagram ni dirección.',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+                TextField(
                   controller: _descriptionController,
                   maxLength: profileDescriptionMaxLength,
                   maxLines: 3,
                   decoration: const InputDecoration(
-                    labelText: 'Descripción',
-                    hintText:
-                        'Ej: cambio Messi repetido por 30 fichas que me falten, mi insta es @mi.insta',
+                    labelText: 'Descripción privada',
+                    hintText: 'Ej: cambio repetidas por faltantes específicas',
                     helperText: 'Solo visible después de un match mutuo.',
                     border: OutlineInputBorder(),
                   ),
@@ -469,7 +506,8 @@ class _PrivacyNotice extends StatelessWidget {
               child: Text(
                 'Usaremos solo región y comuna aproximada. '
                 'No guardes dirección exacta. Tu contacto real se guarda privado. '
-                'La descripción será visible para tus matches.',
+                'La descripción pública se verá antes del match si la completas. '
+                'La descripción privada solo será visible para tus matches.',
               ),
             ),
           ],

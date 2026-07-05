@@ -259,6 +259,7 @@ class MatchingRepository {
       uid: uid,
       displayName: displayName.isEmpty ? 'Usuario' : displayName,
       comuna: _readString(data['comuna']),
+      publicDescription: _readString(data['publicDescription']),
       iCanGiveIds: iCanGiveIds,
       theyCanGiveIds: theyCanGiveIds,
       lastActiveAt: _readDateTime(data['lastActiveAt']),
@@ -357,6 +358,7 @@ class MatchingRepository {
               ? 'Usuario'
               : _readString(data['displayName']),
           comuna: _readString(data['comuna']),
+          publicDescription: _readString(data['publicDescription']),
           iCanGiveIds: iCanGiveIds,
           theyCanGiveIds: theyCanGiveIds,
           lastActiveAt: _readDateTime(data['lastActiveAt']),

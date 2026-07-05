@@ -38,7 +38,8 @@ service cloud.firestore {
         'missingIds',
         'duplicateIds',
         'lastActiveAt',
-        'profileVisible'
+        'profileVisible',
+        'publicDescription'
       ]);
     }
 
@@ -57,6 +58,13 @@ service cloud.firestore {
         'instagram'
       ]);
     }
+    function publicProfileHasValidPublicDescription() {
+  return !request.resource.data.keys().hasAny(['publicDescription'])
+    || (
+      request.resource.data.publicDescription is string
+      && request.resource.data.publicDescription.size() <= 200
+    );
+}
 
     function privateProfileHasOnlyAllowedFields() {
       return request.resource.data.keys().hasOnly([
@@ -314,8 +322,9 @@ function communePostIsValid(communeKey, postId) {
   allow read: if signedIn();
 
   allow create, update: if isOwner(uid)
-    && publicProfileHasOnlyAllowedFields()
-    && publicProfileHasNoPrivateFields();
+  && publicProfileHasOnlyAllowedFields()
+  && publicProfileHasNoPrivateFields()
+  && publicProfileHasValidPublicDescription();
 
   allow delete: if isOwner(uid);
 }
