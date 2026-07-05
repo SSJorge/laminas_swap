@@ -37,7 +37,7 @@ class UserEntitlements {
 
   String get planLabel {
     if (hasBundle) {
-      return 'Pack fundador';
+      return 'Pack permanente';
     }
 
     if (premiumEnabled) {

@@ -22,7 +22,7 @@ class PlansScreen extends StatelessWidget {
       _PlanInfo(
         name: 'Gratis',
         price: '\$0',
-        monthlyLabel: 'mensual',
+        priceLabel: 'permanente',
         icon: Icons.lock_open,
         highlight: false,
         features: [
@@ -36,44 +36,48 @@ class PlansScreen extends StatelessWidget {
       _PlanInfo(
         name: 'Sin anuncios',
         price: '\$500',
-        monthlyLabel: 'mensual',
+        priceLabel: 'pago único',
         icon: Icons.block,
         highlight: false,
-        discountLabel: '50% descuento',
+        discountLabel: 'precio fundador',
         features: [
+          'Plan permanente mientras TruequeGol esté operativo',
           'Sin espacios publicitarios',
           'Mejor experiencia visual',
           'Mantiene funciones base del plan gratis',
-          'Ideal si solo quieres usar la app sin anuncios',
+          'No es una suscripción mensual',
         ],
       ),
       _PlanInfo(
         name: 'Premium',
         price: '\$500',
-        monthlyLabel: 'mensual',
+        priceLabel: 'pago único',
         icon: Icons.workspace_premium,
         highlight: false,
-        discountLabel: '50% descuento',
+        discountLabel: 'precio fundador',
         features: [
-          'Límites diarios aumentados',
+          'Plan permanente mientras TruequeGol esté operativo',
           '15 likes diarios',
           '80 dislikes diarios',
-          '15 búsquedas exactas',
-          '10 cambios de comuna',
+          '15 búsquedas exactas diarias',
+          '10 cambios de comuna diarios',
           'Funciones premium futuras, como búsqueda avanzada por lámina o tarjeta específica',
+          'No es una suscripción mensual',
         ],
       ),
       _PlanInfo(
-        name: 'Pack',
+        name: 'Pack permanente',
         price: '\$750',
-        monthlyLabel: 'mensual',
+        priceLabel: 'pago único',
         icon: Icons.local_fire_department,
         highlight: true,
-        discountLabel: '50% descuento',
+        discountLabel: 'mejor opción',
         features: [
           'Incluye Sin anuncios',
           'Incluye Premium',
+          'Plan permanente mientras TruequeGol esté operativo',
           'Mejor relación precio/beneficio',
+          'No es una suscripción mensual',
         ],
       ),
     ];
@@ -150,7 +154,7 @@ class _HeaderCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Planes mensuales',
+              'Planes permanentes',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 color: Colors.white,
@@ -159,7 +163,7 @@ class _HeaderCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Compara el plan gratis, quitar anuncios, premium y el pack completo.',
+              'Paga una vez y mantén los beneficios mientras TruequeGol esté operativo. No son suscripciones mensuales.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white, height: 1.35),
             ),
@@ -174,7 +178,7 @@ class _PlanInfo {
   const _PlanInfo({
     required this.name,
     required this.price,
-    required this.monthlyLabel,
+    required this.priceLabel,
     required this.icon,
     required this.highlight,
     required this.features,
@@ -183,7 +187,7 @@ class _PlanInfo {
 
   final String name;
   final String price;
-  final String monthlyLabel;
+  final String priceLabel;
   final IconData icon;
   final bool highlight;
   final List<String> features;
@@ -210,7 +214,6 @@ class _PlanCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -231,7 +234,8 @@ class _PlanCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (plan.discountLabel != null) const _DiscountBadge(),
+                if (plan.discountLabel != null)
+                  _PlanBadge(label: plan.discountLabel!),
               ],
             ),
             const SizedBox(height: 14),
@@ -248,36 +252,37 @@ class _PlanCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 5),
                   child: Text(
-                    plan.monthlyLabel,
+                    plan.priceLabel,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-
-            // Importante: NO usar Expanded ni ListView aquí.
-            for (final feature in plan.features)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(
-                      Icons.check_circle,
-                      size: 18,
-                      color: Color(0xFF0B7A3B),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        feature,
-                        style: Theme.of(context).textTheme.bodyMedium,
+            Expanded(
+              child: ListView(
+                physics: const NeverScrollableScrollPhysics(),
+                padding: EdgeInsets.zero,
+                children: [
+                  for (final feature in plan.features)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.check_circle,
+                            size: 18,
+                            color: Color(0xFF0B7A3B),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(feature)),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                ],
               ),
+            ),
           ],
         ),
       ),
@@ -285,33 +290,28 @@ class _PlanCard extends StatelessWidget {
   }
 }
 
-class _DiscountBadge extends StatelessWidget {
-  const _DiscountBadge();
+class _PlanBadge extends StatelessWidget {
+  const _PlanBadge({required this.label});
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: '50% de descuento fundador',
+      message: label,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: Colors.red,
           borderRadius: BorderRadius.circular(999),
         ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.percent, color: Colors.white, size: 14),
-            SizedBox(width: 2),
-            Text(
-              '50%',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 12,
-              ),
-            ),
-          ],
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            fontSize: 11,
+          ),
         ),
       ),
     );
@@ -340,7 +340,7 @@ class _BetaNoticeCard extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Versión beta',
+                    'Planes fundadores',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
@@ -351,10 +351,12 @@ class _BetaNoticeCard extends StatelessWidget {
             const SizedBox(height: 10),
             const Text(
               'Actualmente no está integrado el sistema de pagos. '
-              'Aun así, si quieres suscribirte con anticipo, escríbeme a '
-              'trueque.gol.contacto@gmail.com para obtener los datos de transferencia. Las primeras 100 suscripciones '
-              'estarán con 50% de descuento. Todo plan pagado en junio '
-              'estará disponible hasta el 31 de julio.',
+              'Si quieres activar un plan permanente fundador, escríbeme a '
+              'trueque.gol.contacto@gmail.com para obtener los datos de transferencia.\n\n'
+              'Los planes pagados son de pago único: no son mensuales ni se renuevan automáticamente. '
+              'El acceso se mantiene mientras TruequeGol esté operativo.\n\n'
+              'Mantenimiento correctivo garantizado hasta el 31 de diciembre de 2026. '
+              'Después de esa fecha, la app podrá seguir disponible, pero no se garantiza soporte, nuevas funciones ni corrección de fallas.',
               style: TextStyle(height: 1.4),
             ),
             const SizedBox(height: 14),
@@ -379,6 +381,8 @@ class _LegalSmallNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
+      '“Permanente” significa pago único con beneficios activos mientras TruequeGol siga operativo. '
+      'No significa acceso de por vida. '
       'Los planes, límites y funciones pueden ajustarse durante la beta. '
       'La app es independiente y no está afiliada, patrocinada ni respaldada '
       'por marcas, federaciones, editoriales o eventos deportivos oficiales.',

@@ -47,17 +47,17 @@ class PlanStatusCard extends StatelessWidget {
 
   String _subtitleFor(UserEntitlements entitlements) {
     if (entitlements.hasBundle) {
-      return 'Sin anuncios y con funciones premium activas.';
+      return 'Pack permanente activo: sin anuncios y con funciones premium.';
     }
 
     if (entitlements.premiumEnabled) {
-      return 'Funciones premium activas. Los anuncios siguen activos.';
+      return 'Plan Premium permanente activo. Los anuncios siguen activos.';
     }
 
     if (entitlements.adsRemoved) {
-      return 'Sin anuncios. Mantienes límites extendidos por no ver anuncios.';
+      return 'Plan Sin anuncios permanente activo.';
     }
 
-    return 'Gratis. Toca para ver planes y beneficios.';
+    return 'Plan gratis. Puedes activar un plan permanente de pago único.';
   }
 }
