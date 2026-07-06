@@ -135,7 +135,7 @@ class DailyQuotaRepository {
 
     if (used >= limit) {
       throw Exception(
-        'Ya usaste tus ${definition.label.toLowerCase()} de hoy.',
+        'Ya alcanzaste el límite diario de ${definition.label.toLowerCase()}.',
       );
     }
 
