@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../models/commune_post.dart';
 import '../services/commune_post_repository.dart';
 import '../services/matching_repository.dart';
+import '../models/commune_post_comment.dart';
 
 class CommunePostsScreen extends StatefulWidget {
   const CommunePostsScreen({super.key});
@@ -23,6 +24,8 @@ class _CommunePostsScreenState extends State<CommunePostsScreen> {
   bool _isCreating = false;
   bool _isLiking = false;
 
+String? _commentingPostId;
+String? _deletingCommentId;
   @override
   void initState() {
     super.initState();
@@ -61,6 +64,280 @@ class _CommunePostsScreenState extends State<CommunePostsScreen> {
 
     await _profileFuture;
   }
+  Future<void> _showPostDetailSheet(CommunePost post) async {
+  final user = FirebaseAuth.instance.currentUser;
+  final commentController = TextEditingController();
+
+  try {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final cleanComment = commentController.text.trim();
+            final canComment = user != null &&
+                cleanComment.isNotEmpty &&
+                cleanComment.length <= CommunePostRepository.maxCommentLength &&
+                _commentingPostId != post.id;
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                ),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.82,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(child: Text(_initialFor(post.displayName))),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              post.displayName,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(post.comuna.isEmpty ? 'Sin comuna' : post.comuna),
+                      const SizedBox(height: 12),
+                      Text(
+                        post.text,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                      const SizedBox(height: 12),
+                      if (post.uid == user?.uid)
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.of(sheetContext).pop();
+                            _showDeletePostDialog(post);
+                          },
+                          icon: const Icon(Icons.delete_outline),
+                          label: const Text('Eliminar publicación'),
+                        )
+                      else
+                        FilledButton.icon(
+                          onPressed: _isLiking
+                              ? null
+                              : () {
+                                  Navigator.of(sheetContext).pop();
+                                  _likeAuthor(post);
+                                },
+                          icon: const Icon(Icons.favorite),
+                          label: const Text('Dar like'),
+                        ),
+                      const Divider(height: 28),
+                      Text(
+                        'Comentarios',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: StreamBuilder<List<CommunePostComment>>(
+                          stream: _postRepository.watchCommentsForPost(post: post),
+                          builder: (context, commentsSnapshot) {
+                            if (commentsSnapshot.connectionState ==
+                                    ConnectionState.waiting &&
+                                !commentsSnapshot.hasData) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+
+                            if (commentsSnapshot.hasError) {
+                              return Center(
+                                child: Text(
+                                  commentsSnapshot.error
+                                      .toString()
+                                      .replaceFirst('Exception: ', ''),
+                                  textAlign: TextAlign.center,
+                                ),
+                              );
+                            }
+
+                            final comments = commentsSnapshot.data ?? [];
+
+                            if (comments.isEmpty) {
+                              return const Center(
+                                child: Text(
+                                  'Aún no hay comentarios.',
+                                  textAlign: TextAlign.center,
+                                ),
+                              );
+                            }
+
+                            return ListView.separated(
+                              itemCount: comments.length,
+                              separatorBuilder: (context, index) => const Divider(height: 18),
+                              itemBuilder: (context, index) {
+                                final comment = comments[index];
+
+                                return _CommentTile(
+                                  comment: comment,
+                                  dateText: _formatDate(comment.createdAt),
+                                  isMine: comment.uid == user?.uid,
+                                  isDeleting:
+                                      _deletingCommentId == comment.id,
+                                  onDelete: () {
+                                    _deleteComment(post, comment);
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: commentController,
+                        maxLength: CommunePostRepository.maxCommentLength,
+                        minLines: 1,
+                        maxLines: 3,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          hintText: 'Escribe un comentario',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => setModalState(() {}),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: canComment
+                              ? () async {
+                                  await _createComment(
+                                    post: post,
+                                    text: cleanComment,
+                                    onSuccess: () {
+                                      commentController.clear();
+                                      setModalState(() {});
+                                    },
+                                  );
+                                }
+                              : null,
+                          icon: const Icon(Icons.send),
+                          label: const Text('Comentar'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  } finally {
+    commentController.dispose();
+  }
+}
+
+Future<void> _createComment({
+  required CommunePost post,
+  required String text,
+  required VoidCallback onSuccess,
+}) async {
+  final user = FirebaseAuth.instance.currentUser;
+
+  if (user == null || _commentingPostId == post.id) {
+    return;
+  }
+
+  final messenger = ScaffoldMessenger.of(context);
+
+  setState(() {
+    _commentingPostId = post.id;
+  });
+
+  try {
+    await _postRepository.createComment(
+      uid: user.uid,
+      post: post,
+      text: text,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    onSuccess();
+
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Comentario publicado.')),
+    );
+  } catch (e) {
+    if (!mounted) {
+      return;
+    }
+
+    messenger.showSnackBar(
+      SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+    );
+  } finally {
+    if (mounted) {
+      setState(() {
+        _commentingPostId = null;
+      });
+    }
+  }
+}
+
+Future<void> _deleteComment(
+  CommunePost post,
+  CommunePostComment comment,
+) async {
+  if (_deletingCommentId == comment.id) {
+    return;
+  }
+
+  final messenger = ScaffoldMessenger.of(context);
+
+  setState(() {
+    _deletingCommentId = comment.id;
+  });
+
+  try {
+    await _postRepository.deleteComment(
+      post: post,
+      comment: comment,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Comentario eliminado.')),
+    );
+  } catch (e) {
+    if (!mounted) {
+      return;
+    }
+
+    messenger.showSnackBar(
+      SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+    );
+  } finally {
+    if (mounted) {
+      setState(() {
+        _deletingCommentId = null;
+      });
+    }
+  }
+}
 
   Future<void> _openCreatePostSheet() async {
     if (_isCreating) {
@@ -232,20 +509,23 @@ class _CommunePostsScreenState extends State<CommunePostsScreen> {
     }
   }
 
+  // Future<void> _handlePostTap(CommunePost post) async {
+  //   final user = FirebaseAuth.instance.currentUser;
+
+  //   if (user == null) {
+  //     return;
+  //   }
+
+  //   if (post.uid == user.uid) {
+  //     await _showDeletePostDialog(post);
+  //     return;
+  //   }
+
+  //   await _showAuthorDialog(post);
+  // }
   Future<void> _handlePostTap(CommunePost post) async {
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) {
-      return;
-    }
-
-    if (post.uid == user.uid) {
-      await _showDeletePostDialog(post);
-      return;
-    }
-
-    await _showAuthorDialog(post);
-  }
+  await _showPostDetailSheet(post);
+}
 
   Future<void> _showDeletePostDialog(CommunePost post) async {
     final shouldDelete = await showDialog<bool>(
@@ -300,55 +580,55 @@ class _CommunePostsScreenState extends State<CommunePostsScreen> {
     }
   }
 
-  Future<void> _showAuthorDialog(CommunePost post) async {
-    await showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              CircleAvatar(child: Text(_initialFor(post.displayName))),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(post.displayName, overflow: TextOverflow.ellipsis),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(post.comuna.isEmpty ? 'Sin comuna' : post.comuna),
-              const SizedBox(height: 12),
-              Text(post.text, style: Theme.of(context).textTheme.bodyLarge),
-              const SizedBox(height: 12),
-              const Text(
-                'Si le das like y esa persona también te da like, aparecerá en tus matches.',
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cerrar'),
-            ),
-            FilledButton.icon(
-              onPressed: _isLiking
-                  ? null
-                  : () {
-                      Navigator.of(context).pop();
-                      _likeAuthor(post);
-                    },
-              icon: const Icon(Icons.favorite),
-              label: const Text('Dar like'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // Future<void> _showAuthorDialog(CommunePost post) async {
+  //   await showDialog<void>(
+  //     context: context,
+  //     builder: (context) {
+  //       return AlertDialog(
+  //         title: Row(
+  //           children: [
+  //             CircleAvatar(child: Text(_initialFor(post.displayName))),
+  //             const SizedBox(width: 12),
+  //             Expanded(
+  //               child: Text(post.displayName, overflow: TextOverflow.ellipsis),
+  //             ),
+  //           ],
+  //         ),
+  //         content: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           crossAxisAlignment: CrossAxisAlignment.start,
+  //           children: [
+  //             Text(post.comuna.isEmpty ? 'Sin comuna' : post.comuna),
+  //             const SizedBox(height: 12),
+  //             Text(post.text, style: Theme.of(context).textTheme.bodyLarge),
+  //             const SizedBox(height: 12),
+  //             const Text(
+  //               'Si le das like y esa persona también te da like, aparecerá en tus matches.',
+  //             ),
+  //           ],
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () {
+  //               Navigator.of(context).pop();
+  //             },
+  //             child: const Text('Cerrar'),
+  //           ),
+  //           FilledButton.icon(
+  //             onPressed: _isLiking
+  //                 ? null
+  //                 : () {
+  //                     Navigator.of(context).pop();
+  //                     _likeAuthor(post);
+  //                   },
+  //             icon: const Icon(Icons.favorite),
+  //             label: const Text('Dar like'),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
   Future<void> _likeAuthor(CommunePost post) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -621,12 +901,85 @@ class _CommunePostCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(isMine ? Icons.more_vert : Icons.chevron_right),
+              Icon(isMine ? Icons.more_vert : Icons.chat_bubble_outline),
             ],
           ),
         ),
       ),
     );
+  }
+}
+class _CommentTile extends StatelessWidget {
+  const _CommentTile({
+    required this.comment,
+    required this.dateText,
+    required this.isMine,
+    required this.isDeleting,
+    required this.onDelete,
+  });
+
+  final CommunePostComment comment;
+  final String dateText;
+  final bool isMine;
+  final bool isDeleting;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: 16,
+          child: Text(_initialForComment(comment.displayName)),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    comment.displayName,
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  Text(
+                    dateText,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  if (isMine)
+                    Text(
+                      'Tuyo',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(comment.text),
+            ],
+          ),
+        ),
+        if (isMine)
+          IconButton(
+            tooltip: 'Eliminar comentario',
+            onPressed: isDeleting ? null : onDelete,
+            icon: const Icon(Icons.delete_outline),
+          ),
+      ],
+    );
+  }
+
+  String _initialForComment(String value) {
+    final cleanValue = value.trim();
+
+    if (cleanValue.isEmpty) {
+      return '?';
+    }
+
+    return cleanValue[0].toUpperCase();
   }
 }
 

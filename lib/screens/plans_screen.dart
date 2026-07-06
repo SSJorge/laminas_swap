@@ -339,7 +339,7 @@ class _BetaNoticeCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             const Text(
-              'Los primeros 100 planes tendrán 50\% de descuento.\n'
+              'Los primeros 100 planes tendrán 50% de descuento.\n'
               'Actualmente no está integrado el sistema de pagos. '
               'Si quieres activar un plan permanente fundador, escríbeme a '
               'trueque.gol.contacto@gmail.com para obtener los datos de transferencia.\n\n'

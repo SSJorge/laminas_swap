@@ -22,7 +22,7 @@ class MatchingRepository {
     }
 
     final myData = myProfileDoc.data() ?? <String, dynamic>{};
-    final myComunaKey = _effectiveComunaKey(myData);
+    // final myComunaKey = _effectiveComunaKey(myData);
     final myMissingIds = _readStringSet(myData['missingIds']);
     final myDuplicateIds = _readStringSet(myData['duplicateIds']);
     final blockRepository = BlockRepository(_db);

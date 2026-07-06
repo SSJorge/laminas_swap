@@ -255,6 +255,27 @@ function communePostIsValid(communeKey, postId) {
     request.resource.data.text.size() <= 220 &&
     request.resource.data.createdAt == request.time;
 }
+function communePostCommentHasOnlyAllowedFields() {
+  return request.resource.data.keys().hasOnly([
+    'uid',
+    'displayName',
+    'text',
+    'createdAt'
+  ]);
+}
+
+function communePostCommentIsValid(communeKey, postId, commentId) {
+  return currentUserPublicProfileExists()
+    && currentUserPublicProfile().comunaKey == communeKey
+    && exists(/databases/$(database)/documents/communePosts/$(communeKey)/posts/$(postId))
+    && commentId == request.auth.uid
+    && request.resource.data.uid == request.auth.uid
+    && request.resource.data.displayName == currentUserPublicProfile().displayName
+    && request.resource.data.text is string
+    && request.resource.data.text.size() > 0
+    && request.resource.data.text.size() <= 160
+    && request.resource.data.createdAt == request.time;
+}
 
     match /users/{uid} {
       allow create: if isOwner(uid);
@@ -340,6 +361,20 @@ match /communePosts/{communeKey}/posts/{postId} {
 
   allow delete: if signedIn() &&
     resource.data.uid == request.auth.uid;
+    
+    match /comments/{commentId} {
+  allow read: if canReadCommunePosts(communeKey);
+
+  allow create: if signedIn()
+    && communePostCommentHasOnlyAllowedFields()
+    && communePostCommentIsValid(communeKey, postId, commentId)
+    && !exists(/databases/$(database)/documents/communePosts/$(communeKey)/posts/$(postId)/comments/$(commentId));
+
+  allow update: if false;
+
+  allow delete: if signedIn()
+    && resource.data.uid == request.auth.uid;
+}
 }
 
     match /privateProfiles/{uid} {

@@ -13,6 +13,9 @@ import '../utils/sticker_import_mapper.dart';
 import '../utils/sticker_list_import_parser.dart';
 import 'package:flutter/services.dart';
 import '../utils/sticker_list_exporter.dart';
+import 'package:flutter/services.dart';
+
+import '../utils/sticker_list_exporter.dart';
 
 class CardsScreen extends StatefulWidget {
   const CardsScreen({super.key});
@@ -59,11 +62,6 @@ class _CardsScreenState extends State<CardsScreen> {
   required Map<String, CardStatus> currentStatuses,
 }) async {
   final exportText = buildStickerExportList(currentStatuses);
-
-  Future<void> _copyExportList({
-  required Map<String, CardStatus> currentStatuses,
-}) async {
-  final exportText = buildStickerExportList(currentStatuses);
   final messenger = ScaffoldMessenger.of(context);
 
   await Clipboard.setData(ClipboardData(text: exportText));
@@ -73,7 +71,6 @@ class _CardsScreenState extends State<CardsScreen> {
   messenger.showSnackBar(
     const SnackBar(content: Text('Lista copiada.')),
   );
-}
 }
 
   String _expansionKey({required String uid, required String tileId}) {
