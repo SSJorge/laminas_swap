@@ -28,9 +28,7 @@ class MatchingRepository {
     final blockRepository = BlockRepository(_db);
     final myBlockedIds = await blockRepository.getBlockedUserIds(uid);
 
-    if (myComunaKey.isEmpty) {
-      throw Exception('Primero guarda tu comuna en Mi perfil.');
-    }
+    
 
     final publicProfilesSnapshot = await _db
         .collection('publicProfiles')
@@ -79,18 +77,14 @@ class MatchingRepository {
       }
 
       final data = doc.data();
-      final otherComunaKey = _effectiveComunaKey(data);
 
-      if (otherComunaKey.isEmpty || otherComunaKey != myComunaKey) {
-        continue;
-      }
-
-      final candidate = _buildCandidateFromPublicProfile(
-        uid: doc.id,
-        data: data,
-        myMissingIds: myMissingIds,
-        myDuplicateIds: myDuplicateIds,
-      );
+final candidate = _buildCandidateFromPublicProfile(
+  uid: doc.id,
+  data: data,
+  myMissingIds: myMissingIds,
+  myDuplicateIds: myDuplicateIds,
+  allowEmpty: true,
+);
 
       if (candidate != null) {
         receivedLikes.add(candidate);

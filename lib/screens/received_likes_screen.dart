@@ -243,8 +243,9 @@ class _ReceivedLikesInfoCard extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Text(
-          'Estas personas ya te dieron like. Antes de responder solo ves la cantidad de láminas compatibles. '
-          'Si tú también les das like, se crea un match y se desbloquea el detalle.',
+          'Estas personas ya te dieron like.\n'
+'Antes de responder solo ves la cantidad de láminas compatibles.\n'
+'Si tú también les das like, se crea un match y se desbloquea el detalle.',
         ),
       ),
     );
