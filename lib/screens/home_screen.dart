@@ -14,6 +14,7 @@ import 'user_search_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../widgets/feedback_footer.dart';
 import 'commune_posts_screen.dart';
+import 'share_profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -180,6 +181,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                 ),
+                const SizedBox(height: 12),
+Card(
+  child: ListTile(
+    leading: const Icon(Icons.ios_share),
+    title: const Text('Compartir perfil y lista'),
+    subtitle: const Text(
+      'Copia tu lista, tu enlace o muestra tu QR.',
+    ),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: () {
+      _openScreen(const ShareProfileScreen());
+    },
+  ),
+),
                 const SizedBox(height: 12),
                 Card(
                   child: ListTile(

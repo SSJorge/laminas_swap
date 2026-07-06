@@ -11,6 +11,8 @@ import '../services/card_repository.dart';
 import '../utils/card_display_utils.dart';
 import '../utils/sticker_import_mapper.dart';
 import '../utils/sticker_list_import_parser.dart';
+import 'package:flutter/services.dart';
+import '../utils/sticker_list_exporter.dart';
 
 class CardsScreen extends StatefulWidget {
   const CardsScreen({super.key});
@@ -53,6 +55,26 @@ class _CardsScreenState extends State<CardsScreen> {
       _isLoadingExpansionState = false;
     });
   }
+  Future<void> _copyExportList({
+  required Map<String, CardStatus> currentStatuses,
+}) async {
+  final exportText = buildStickerExportList(currentStatuses);
+
+  Future<void> _copyExportList({
+  required Map<String, CardStatus> currentStatuses,
+}) async {
+  final exportText = buildStickerExportList(currentStatuses);
+  final messenger = ScaffoldMessenger.of(context);
+
+  await Clipboard.setData(ClipboardData(text: exportText));
+
+  if (!mounted) return;
+
+  messenger.showSnackBar(
+    const SnackBar(content: Text('Lista copiada.')),
+  );
+}
+}
 
   String _expansionKey({required String uid, required String tileId}) {
     return 'cards_screen_expanded_${uid}_$tileId';
@@ -460,29 +482,39 @@ class _CardsScreenState extends State<CardsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Importar lista',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w900),
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'Pega una lista de faltantes y repetidas para autocompletar tu álbum '
-                            'en segundos.',
-                          ),
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: FilledButton.icon(
-                              onPressed: () {
-                                _showImportListDialog(
-                                  uid: user.uid,
-                                  currentStatuses: statuses,
-                                );
-                              },
-                              icon: const Icon(Icons.upload_file),
-                              label: const Text('Importar lista'),
-                            ),
-                          ),
+  'Importar / exportar lista',
+  style: Theme.of(context).textTheme.titleMedium
+      ?.copyWith(fontWeight: FontWeight.w900),
+),
+const SizedBox(height: 6),
+const Text(
+  'Pega una lista para autocompletar tu álbum o copia tu lista actual '
+  'para compartirla.',
+),
+const SizedBox(height: 12),
+Wrap(
+  spacing: 12,
+  runSpacing: 8,
+  children: [
+    FilledButton.icon(
+      onPressed: () {
+        _showImportListDialog(
+          uid: user.uid,
+          currentStatuses: statuses,
+        );
+      },
+      icon: const Icon(Icons.upload_file),
+      label: const Text('Importar lista'),
+    ),
+    OutlinedButton.icon(
+      onPressed: () {
+        _copyExportList(currentStatuses: statuses);
+      },
+      icon: const Icon(Icons.copy),
+      label: const Text('Copiar lista'),
+    ),
+  ],
+),
                         ],
                       ),
                     ),

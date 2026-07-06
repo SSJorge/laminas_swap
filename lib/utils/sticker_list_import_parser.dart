@@ -49,11 +49,13 @@ StickerImportResult parseStickerImportList(String rawText) {
     }
 
     if (normalizedLine == 'repetidas' ||
-        normalizedLine == 'repetidos' ||
-        normalizedLine == 'repetidas:') {
-      currentSection = _ImportSection.repeated;
-      continue;
-    }
+    normalizedLine == 'repetidos' ||
+    normalizedLine == 'tengo repetidas' ||
+    normalizedLine == 'mis repetidas') {
+  currentSection = _ImportSection.repeated;
+
+  continue;
+}
 
     if (_shouldIgnoreLine(line)) {
       ignoredLines.add(line);

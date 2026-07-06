@@ -231,13 +231,89 @@ class MatchingRepository {
 
     return confirmedMatches;
   }
+  Future<MatchCandidate> findCandidateByDisplayNameKey({
+  required String uid,
+  required String displayNameKey,
+}) async {
+  final cleanKey = displayNameKey.trim().toLowerCase();
+
+  if (cleanKey.isEmpty) {
+    throw Exception('El enlace no tiene un nombre de usuario válido.');
+  }
+
+  final myProfileDoc = await _db.collection('publicProfiles').doc(uid).get();
+
+  if (!myProfileDoc.exists) {
+    throw Exception('Primero completa tu perfil.');
+  }
+
+  final myData = myProfileDoc.data() ?? {};
+  final myMissingIds = _readStringSet(myData['missingIds']);
+  final myDuplicateIds = _readStringSet(myData['duplicateIds']);
+
+  if (myMissingIds.isEmpty && myDuplicateIds.isEmpty) {
+    throw Exception(
+      'Primero marca algunas láminas para calcular compatibilidad.',
+    );
+  }
+
+  final targetSnapshot = await _db
+      .collection('publicProfiles')
+      .where('displayNameKey', isEqualTo: cleanKey)
+      .limit(1)
+      .get();
+
+  if (targetSnapshot.docs.isEmpty) {
+    throw Exception('No encontré ese usuario. Puede que haya cambiado su nombre.');
+  }
+
+  final targetDoc = targetSnapshot.docs.first;
+
+  if (targetDoc.id == uid) {
+    throw Exception('Este enlace apunta a tu propio perfil.');
+  }
+
+  final targetData = targetDoc.data();
+
+  if (targetData['profileVisible'] != true) {
+    throw Exception('Este perfil no está visible actualmente.');
+  }
+
+  final blockRepository = BlockRepository(_db);
+  final myBlockedIds = await blockRepository.getBlockedUserIds(uid);
+
+  final shouldSkipBecauseOfBlock = await _shouldSkipBecauseOfBlock(
+    myUid: uid,
+    otherUid: targetDoc.id,
+    myBlockedIds: myBlockedIds,
+  );
+
+  if (shouldSkipBecauseOfBlock) {
+    throw Exception('No puedes ver este perfil.');
+  }
+
+  final candidate = _buildCandidateFromPublicProfile(
+    uid: targetDoc.id,
+    data: targetData,
+    myMissingIds: myMissingIds,
+    myDuplicateIds: myDuplicateIds,
+    allowEmpty: true,
+  );
+
+  if (candidate == null) {
+    throw Exception('No se pudo cargar este perfil.');
+  }
+
+  return candidate;
+}
 
   MatchCandidate? _buildCandidateFromPublicProfile({
-    required String uid,
-    required Map<String, dynamic> data,
-    required Set<String> myMissingIds,
-    required Set<String> myDuplicateIds,
-  }) {
+  required String uid,
+  required Map<String, dynamic> data,
+  required Set<String> myMissingIds,
+  required Set<String> myDuplicateIds,
+  bool allowEmpty = false,
+}) {
     final otherMissingIds = _readStringSet(data['missingIds']);
     final otherDuplicateIds = _readStringSet(data['duplicateIds']);
 
@@ -249,9 +325,9 @@ class MatchingRepository {
     iCanGiveIds.sort();
     theyCanGiveIds.sort();
 
-    if (iCanGiveIds.isEmpty && theyCanGiveIds.isEmpty) {
-      return null;
-    }
+    if (!allowEmpty && iCanGiveIds.isEmpty && theyCanGiveIds.isEmpty) {
+  return null;
+}
 
     final displayName = _readString(data['displayName']);
 
