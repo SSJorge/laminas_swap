@@ -260,10 +260,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                const _PrivacyNotice(),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _displayNameController,
+  const _PrivacyNotice(),
+  const SizedBox(height: 16),
+
+  SizedBox(
+    width: double.infinity,
+    child: FilledButton(
+      onPressed: _isSaving ? null : _saveProfile,
+      child: _isSaving
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Text('Guardar cambios'),
+    ),
+  ),
+
+  if (_message != null) ...[
+    const SizedBox(height: 12),
+    Text(
+      _message!,
+      textAlign: TextAlign.center,
+    ),
+  ],
+
+  const SizedBox(height: 16),
+
+  TextField(
+    controller: _displayNameController,
                   maxLength: displayNameMaxLength,
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9._]')),
@@ -421,29 +446,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                if (_message != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(_message!, textAlign: TextAlign.center),
-                  ),
-                //limites diarios
                 const DailyLimitsCard(types: [DailyLimitType.communeChange]),
-                const SizedBox(height: 12),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: _isSaving ? null : _saveProfile,
-                    child: _isSaving
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Guardar perfil'),
-                  ),
-                ),
-                const SizedBox(height: 24),
+const SizedBox(height: 24),
                 const Divider(),
                 const SizedBox(height: 12),
                 const DeleteAccountButton(),
