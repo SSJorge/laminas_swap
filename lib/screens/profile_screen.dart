@@ -388,7 +388,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     labelText: 'Descripción pública',
                     hintText: 'Ej: Vendo Messi',
                     helperText:
-                        'Visible antes del match. No escribas teléfono, WhatsApp, Instagram ni dirección.',
+                        'Visible antes del match. \nNo escribas teléfono, WhatsApp, Instagram \nni dirección exacta.',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -400,7 +400,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   maxLines: 3,
                   decoration: const InputDecoration(
                     labelText: 'Descripción privada',
-                    hintText: 'Ej: cambio repetidas por faltantes específicas',
+                    hintText: 'Ej: háblame a mi insta @mi_insta',
                     helperText: 'Solo visible después de un match mutuo.',
                     border: OutlineInputBorder(),
                   ),
@@ -505,9 +505,7 @@ class _PrivacyNotice extends StatelessWidget {
             const Expanded(
               child: Text(
                 'Usaremos solo región y comuna aproximada. '
-                'No guardes dirección exacta. Tu contacto real se guarda privado. '
-                'La descripción pública se verá antes del match si la completas. '
-                'La descripción privada solo será visible para tus matches.',
+                'Tu contacto real se guarda privado. ',
               ),
             ),
           ],

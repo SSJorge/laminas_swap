@@ -158,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     leading: const Icon(Icons.person),
                     title: const Text('Perfil'),
                     subtitle: const Text(
-                      'Configura nombre, comuna y forma de contacto privada.',
+                      'Configura nombre, comuna, descripciones y forma de contacto privada.',
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {

@@ -21,95 +21,19 @@ flutter analyze
 flutter build web --release
 firebase deploy --only hosting,firestore:rules
 
-1. Crear web/install.html
-2. Crear web/account-deletion.html
-3. Agregar enlace “Instalar como app” en landing y Home
-4. Generar ícono Android con tu logo
-5. Configurar package name definitivo
-6. Configurar firma release
-7. flutter build appbundle --release
-8. Crear app en Play Console
-9. Completar Store listing, Privacy, Data Safety, Content Rating, App access
-10. Subir .aab a Closed testing
-11. Invitar 12 testers y comenzar los 14 días
+1. Exportar lista
+2. Ver compatibilidad antes del match solo con conteos
+3. QR/enlace de invitación
+4. Comentarios en publicaciones
+5. Confirmar intercambio
+6. Guardado automático de nombre
+7. Foto de usuario
+8. Fotos en publicaciones
+9. Cantidad de repetidas / más estados
+refrescar dislikes
 
 
 
-Reportar usuario
-Motivo:
-- contacto inapropiado
-- estafa
-- spam
-- perfil falso
-- otro
-
-1. Política de privacidad y términos simples
-2. Página pública mínima / landing
-
-Antes de difusión, necesitas una pantalla pública simple antes del login o una landing separada con:
-
-- qué hace la app
-- cómo funciona
-- botón crear cuenta
-- política de privacidad
-- términos
-- instrucciones para instalar como PWA
-- aviso de no afiliación
-
-Esto también ayuda a confianza. Si alguien recibe el link y cae directo a login, puede desconfiar.
-
-3. Revisión legal de nombres y textos
-
-Evita en UI pública y landing cualquier cosa tipo:
-
-FIFA
-Panini
-World Cup
-Copa Mundial
-Mundial 2026
-escudos
-jugadores reales como gancho comercial
-
-Puedes usar lenguaje genérico:
-
-láminas coleccionables
-álbum deportivo
-tarjetas coleccionables
-intercambio de láminas
-
-En la descripción legal pondría algo como:
-
-Esta aplicación es independiente y no está afiliada, patrocinada ni respaldada por marcas, federaciones, editoriales o eventos deportivos oficiales.
-4. QA funcional antes de lanzar
-
-Haz una prueba completa con 4–6 cuentas falsas:
-
-- crear cuenta
-- nombre duplicado bloqueado
-- marcar láminas
-- matching
-- like/dislike
-- límite diario
-- premium manual
-- búsqueda exacta
-- match mutuo
-- mostrar contacto a una persona específica
-- reportar
-- bloquear
-- ocultar perfil
-- eliminar cuenta
-
-También prueba casos raros:
-
-- usuario bloqueado intenta buscarte
-- usuario con match elimina cuenta
-- usuario sin descripción
-- usuario sin contacto mostrado
-- usuario premium vs gratis
-- usuario con adsRemoved
-5. Mejorar eliminación de cuenta más adelante
-
-Para MVP está bien como lo hiciste. Pero más adelante conviene moverlo a Cloud Functions, porque borrar subcolecciones y referencias cruzadas desde cliente puede ser frágil. No lo priorizaría antes de lanzar si ya funciona, pero sí lo dejaría como deuda técnica.
 
 6. Preparar Play Store en paralelo
 
