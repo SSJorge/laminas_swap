@@ -56,6 +56,63 @@ class ShareProfileScreen extends StatelessWidget {
         body: Center(child: Text('No hay usuario autenticado.')),
       );
     }
+    if (user.isAnonymous) {
+  final cardRepository = CardRepository(FirebaseFirestore.instance);
+
+  return Scaffold(
+    appBar: AppBar(title: const Text('Compartir lista')),
+    body: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620),
+        child: StreamBuilder<Map<String, CardStatus>>(
+          stream: cardRepository.watchMyCardStatuses(user.uid),
+          builder: (context, cardsSnapshot) {
+            final statuses = cardsSnapshot.data ?? {};
+            final exportList = buildStickerExportList(statuses);
+
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Modo invitado',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Como invitado puedes copiar tu lista, pero no puedes compartir perfil, QR ni recibir matches.',
+                        ),
+                        const SizedBox(height: 12),
+                        FilledButton.icon(
+                          onPressed: () {
+                            _copyText(
+                              context: context,
+                              text: exportList,
+                              successMessage: 'Lista copiada.',
+                            );
+                          },
+                          icon: const Icon(Icons.copy),
+                          label: const Text('Copiar lista'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    ),
+  );
+}
 
     final cardRepository = CardRepository(FirebaseFirestore.instance);
 

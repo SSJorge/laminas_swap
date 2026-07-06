@@ -13,6 +13,7 @@ service cloud.firestore {
 
     function hasLiked(fromUid, targetUid) {
       return exists(/databases/$(database)/documents/users/$(fromUid)/actions/$(targetUid))
+        && currentUserIsNotGuest()
         && get(/databases/$(database)/documents/users/$(fromUid)/actions/$(targetUid)).data.action == 'like';
     }
 
@@ -39,7 +40,8 @@ service cloud.firestore {
         'duplicateIds',
         'lastActiveAt',
         'profileVisible',
-        'publicDescription'
+        'publicDescription',
+        'isGuest'
       ]);
     }
 
@@ -64,6 +66,15 @@ service cloud.firestore {
       request.resource.data.publicDescription is string
       && request.resource.data.publicDescription.size() <= 200
     );
+}
+function currentUserIsGuest() {
+  return signedIn()
+    && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isGuest == true;
+}
+
+function currentUserIsNotGuest() {
+  return signedIn() && !currentUserIsGuest();
 }
 
     function privateProfileHasOnlyAllowedFields() {
@@ -292,6 +303,7 @@ function communePostCommentIsValid(communeKey, postId, commentId) {
           && (request.auth.uid == uid || request.auth.uid == targetUid);
 
         allow create, update: if isOwner(uid)
+          && currentUserIsNotGuest()
           && actionHasOnlyAllowedFields()
           && actionIsValid(uid, targetUid);
 
@@ -353,6 +365,7 @@ match /communePosts/{communeKey}/posts/{postId} {
   allow read: if canReadCommunePosts(communeKey);
 
   allow create: if signedIn() &&
+    currentUserIsNotGuest() &&
     communePostHasOnlyAllowedFields() &&
     communePostIsValid(communeKey, postId) &&
     !exists(/databases/$(database)/documents/communePosts/$(communeKey)/posts/$(postId));
@@ -366,6 +379,7 @@ match /communePosts/{communeKey}/posts/{postId} {
   allow read: if canReadCommunePosts(communeKey);
 
   allow create: if signedIn()
+    && currentUserIsNotGuest()
     && communePostCommentHasOnlyAllowedFields()
     && communePostCommentIsValid(communeKey, postId, commentId)
     && !exists(/databases/$(database)/documents/communePosts/$(communeKey)/posts/$(postId)/comments/$(commentId));
@@ -406,7 +420,8 @@ match /communePosts/{communeKey}/posts/{postId} {
     match /contactShares/{ownerUid} {
   allow read: if isOwner(ownerUid);
 
-  allow create, update: if false;
+  allow create, update: if false
+  && currentUserIsNotGuest();
 
   allow delete: if isOwner(ownerUid);
 

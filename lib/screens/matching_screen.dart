@@ -56,9 +56,20 @@ class _MatchingScreenState extends State<MatchingScreen> {
   }) async {
     final user = FirebaseAuth.instance.currentUser;
 
-    if (user == null || _savingCandidateIds.contains(candidate.uid)) {
+if (user == null || _savingCandidateIds.contains(candidate.uid)) {
       return;
     }
+
+if (user.isAnonymous) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Crea una cuenta para dar like o dislike.'),
+    ),
+  );
+  return;
+}
+
+    
 
     setState(() {
       _savingCandidateIds.add(candidate.uid);

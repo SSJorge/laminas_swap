@@ -29,6 +29,10 @@ class UserRepository {
     final fallback = DateTime.now().millisecondsSinceEpoch.toString();
     return 'Usuario${fallback.substring(fallback.length - 6)}';
   }
+  String _guestDisplayNameFor(User user) {
+  final shortUid = user.uid.length >= 6 ? user.uid.substring(0, 6) : user.uid;
+  return 'Invitado$shortUid';
+}
 
   Future<void> setDisplayNameOnly({
     required User user,
@@ -36,6 +40,9 @@ class UserRepository {
   }) async {
     final cleanName = validateDisplayName(displayName);
     final cleanNameKey = displayNameKeyFrom(cleanName);
+    if (user.isAnonymous) {
+  throw Exception('Crea una cuenta para cambiar tu nombre de usuario.');
+}
 
     await ensureDisplayNameAvailable(
       displayName: cleanName,
@@ -102,6 +109,176 @@ class UserRepository {
 
     await user.updateDisplayName(cleanName);
   }
+  Future<void> _initGuestUser({required User user}) async {
+  final cleanName = _guestDisplayNameFor(user);
+  final cleanNameKey = displayNameKeyFrom(cleanName);
+  final now = FieldValue.serverTimestamp();
+
+  final userRef = _db.collection('users').doc(user.uid);
+  final publicProfileRef = _db.collection('publicProfiles').doc(user.uid);
+  final privateProfileRef = _db.collection('privateProfiles').doc(user.uid);
+  final privateContactRef = _db.collection('privateContacts').doc(user.uid);
+
+  await _db.runTransaction((transaction) async {
+    final userDoc = await transaction.get(userRef);
+
+    if (userDoc.exists) {
+      transaction.set(
+        userRef,
+        {
+          'lastActiveAt': now,
+          'updatedAt': now,
+        },
+        SetOptions(merge: true),
+      );
+      return;
+    }
+
+    transaction.set(userRef, {
+      'displayName': cleanName,
+      'displayNameKey': cleanNameKey,
+      'hasChosenDisplayName': false,
+      'usernamePromptDismissed': true,
+      'isGuest': true,
+      'email': null,
+      'contactType': contactTypeEmail,
+      'contactValue': '',
+      'contactVisible': false,
+      'profileVisible': false,
+      'createdAt': now,
+      'lastActiveAt': now,
+      'updatedAt': now,
+      'location': {
+        'regionId': 'valparaiso',
+        'region': 'Valparaíso',
+        'regionKey': 'valparaiso',
+        'comuna': 'Quilpué',
+        'comunaKey': 'quilpue',
+        'countryCode': 'CL',
+        'precision': 'comuna',
+      },
+      'stats': {
+        'unlockedToday': 0,
+        'totalCards': 0,
+        'missingCount': 0,
+        'obtainedCount': 0,
+        'duplicateCount': 0,
+      },
+    });
+
+    transaction.set(publicProfileRef, {
+      'displayName': cleanName,
+      'displayNameKey': cleanNameKey,
+      'regionId': 'valparaiso',
+      'region': 'Valparaíso',
+      'regionKey': 'valparaiso',
+      'comuna': 'Quilpué',
+      'comunaKey': 'quilpue',
+      'countryCode': 'CL',
+      'locationPrecision': 'comuna',
+      'missingIds': [],
+      'duplicateIds': [],
+      'lastActiveAt': now,
+      'profileVisible': false,
+      'isGuest': true,
+    });
+
+    transaction.set(privateProfileRef, {
+      'description': '',
+      'updatedAt': now,
+    });
+
+    transaction.set(privateContactRef, {
+      'contactType': contactTypeEmail,
+      'contactValue': '',
+      'updatedAt': now,
+    });
+  });
+
+  await user.updateDisplayName(cleanName);
+}
+Future<void> convertGuestToRegistered({required User user}) async {
+  final email = user.email?.trim() ?? '';
+
+  if (email.isEmpty) {
+    throw Exception('No se pudo obtener el correo de la cuenta.');
+  }
+
+  final cleanName = await _generateAvailableGenericDisplayName();
+  final cleanNameKey = displayNameKeyFrom(cleanName);
+  final now = FieldValue.serverTimestamp();
+
+  final userRef = _db.collection('users').doc(user.uid);
+  final publicProfileRef = _db.collection('publicProfiles').doc(user.uid);
+  final privateContactRef = _db.collection('privateContacts').doc(user.uid);
+  final usernameRef = _db.collection('usernames').doc(cleanNameKey);
+
+  var usernameAlreadyTaken = false;
+
+  await _db.runTransaction((transaction) async {
+    final usernameDoc = await transaction.get(usernameRef);
+
+    if (usernameDoc.exists) {
+      usernameAlreadyTaken = true;
+      return;
+    }
+
+    transaction.set(usernameRef, {
+      'uid': user.uid,
+      'displayName': cleanName,
+      'displayNameKey': cleanNameKey,
+      'createdAt': now,
+      'updatedAt': now,
+    });
+
+    transaction.set(
+      userRef,
+      {
+        'displayName': cleanName,
+        'displayNameKey': cleanNameKey,
+        'hasChosenDisplayName': true,
+        'usernamePromptDismissed': true,
+        'isGuest': false,
+        'email': email,
+        'contactType': contactTypeEmail,
+        'contactValue': email,
+        'contactVisible': false,
+        'profileVisible': true,
+        'lastActiveAt': now,
+        'updatedAt': now,
+      },
+      SetOptions(merge: true),
+    );
+
+    transaction.set(
+      publicProfileRef,
+      {
+        'displayName': cleanName,
+        'displayNameKey': cleanNameKey,
+        'lastActiveAt': now,
+        'profileVisible': true,
+        'isGuest': false,
+      },
+      SetOptions(merge: true),
+    );
+
+    transaction.set(
+      privateContactRef,
+      {
+        'contactType': contactTypeEmail,
+        'contactValue': email,
+        'updatedAt': now,
+      },
+      SetOptions(merge: true),
+    );
+  });
+
+  if (usernameAlreadyTaken) {
+    throw Exception('No se pudo reservar un nombre automático. Intenta nuevamente.');
+  }
+
+  await user.updateDisplayName(cleanName);
+}
 
   Future<void> dismissUsernamePrompt({required String uid}) async {
     await _db.collection('users').doc(uid).set({
@@ -140,14 +317,27 @@ class UserRepository {
     String? displayName,
   }) async {
     final userRef = _db.collection('users').doc(user.uid);
-    final userDoc = await userRef.get();
+final userDoc = await userRef.get();
 
-    if (userDoc.exists) {
-      await userRef.set({
-        'lastActiveAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      return;
-    }
+if (userDoc.exists) {
+  final data = userDoc.data() ?? {};
+  final storedAsGuest = data['isGuest'] == true;
+
+  if (storedAsGuest && !user.isAnonymous) {
+    await convertGuestToRegistered(user: user);
+    return;
+  }
+
+  await userRef.set({
+    'lastActiveAt': FieldValue.serverTimestamp(),
+  }, SetOptions(merge: true));
+  return;
+}
+
+if (user.isAnonymous) {
+  await _initGuestUser(user: user);
+  return;
+}
 
     final hasProvidedDisplayName =
         displayName != null && displayName.trim().isNotEmpty;
@@ -268,6 +458,9 @@ class UserRepository {
       displayName: cleanName,
       currentUid: user.uid,
     );
+    if (user.isAnonymous) {
+  throw Exception('Crea una cuenta para editar tu perfil público.');
+}
 
     final cleanRegionId = regionId.trim();
     final cleanRegion = region.trim();
@@ -277,6 +470,7 @@ class UserRepository {
     final cleanContactType = _normalizeContactType(contactType);
     final cleanDescription = description.trim();
     final cleanPublicDescription = publicDescription.trim();
+    
 
     if (cleanPublicDescription.length > profileDescriptionMaxLength) {
       throw Exception(

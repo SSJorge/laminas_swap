@@ -3,6 +3,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'login_screen.dart';
 import '../widgets/feedback_footer.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../services/user_repository.dart';
 
 class LandingScreen extends StatelessWidget {
   const LandingScreen({super.key});
@@ -20,6 +24,28 @@ class LandingScreen extends StatelessWidget {
       ),
     );
   }
+  Future<void> _enterAsGuest(BuildContext context) async {
+  try {
+    final credential = await FirebaseAuth.instance.signInAnonymously();
+    final user = credential.user;
+
+    if (user == null) {
+      throw Exception('No se pudo crear sesión de invitado.');
+    }
+
+    await UserRepository(
+      FirebaseFirestore.instance,
+    ).initUserIfNeeded(user: user);
+  } catch (e) {
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(e.toString().replaceFirst('Exception: ', '')),
+      ),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -49,13 +75,16 @@ class LandingScreen extends StatelessWidget {
                   const _LandingHeader(),
                   const SizedBox(height: 28),
                   _HeroCard(
-                    onCreateAccount: () {
-                      _openAuth(context, registerMode: true);
-                    },
-                    onLogin: () {
-                      _openAuth(context, registerMode: false);
-                    },
-                  ),
+  onCreateAccount: () {
+    _openAuth(context, registerMode: true);
+  },
+  onLogin: () {
+    _openAuth(context, registerMode: false);
+  },
+  onGuest: () {
+    _enterAsGuest(context);
+  },
+),
                   const SizedBox(height: 20),
                   const _HowItWorksSection(),
                   const SizedBox(height: 20),
@@ -156,10 +185,15 @@ class _LandingHeader extends StatelessWidget {
 }
 
 class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.onCreateAccount, required this.onLogin});
+  const _HeroCard({
+  required this.onCreateAccount,
+  required this.onLogin,
+  required this.onGuest,
+});
 
-  final VoidCallback onCreateAccount;
-  final VoidCallback onLogin;
+final VoidCallback onCreateAccount;
+final VoidCallback onLogin;
+final VoidCallback onGuest;
 
   @override
   Widget build(BuildContext context) {
@@ -246,6 +280,19 @@ class _HeroCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                    OutlinedButton.icon(
+  onPressed: onGuest,
+  icon: const Icon(Icons.visibility_outlined),
+  label: const Text('Ingresar como invitado'),
+  style: OutlinedButton.styleFrom(
+    foregroundColor: const Color(0xFF405247),
+    side: const BorderSide(color: Color(0xFFB8C7BE)),
+    padding: const EdgeInsets.symmetric(
+      horizontal: 18,
+      vertical: 14,
+    ),
+  ),
+),
                   ],
                 ),
               ],

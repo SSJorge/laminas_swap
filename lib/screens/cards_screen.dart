@@ -13,9 +13,7 @@ import '../utils/sticker_import_mapper.dart';
 import '../utils/sticker_list_import_parser.dart';
 import 'package:flutter/services.dart';
 import '../utils/sticker_list_exporter.dart';
-import 'package:flutter/services.dart';
 
-import '../utils/sticker_list_exporter.dart';
 
 class CardsScreen extends StatefulWidget {
   const CardsScreen({super.key});

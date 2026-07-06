@@ -56,9 +56,18 @@ class _DirectMatchScreenState extends State<DirectMatchScreen> {
   }) async {
     final user = FirebaseAuth.instance.currentUser;
 
-    if (user == null || _isSaving) {
-      return;
-    }
+if (user == null || _isSaving) {
+  return;
+}
+
+if (user.isAnonymous) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Crea una cuenta para dar like y hacer match.'),
+    ),
+  );
+  return;
+}
 
     setState(() {
       _isSaving = true;
@@ -257,7 +266,7 @@ class _DirectCandidateCard extends StatelessWidget {
             Text(
               hasCompatibility
                   ? 'El detalle de láminas y contacto se muestra después del match mutuo.'
-                  : 'Aún no hay compatibilidad detectada con tu álbum actual. Igual puedes enviar like.',
+                  : 'Aún no hay compatibilidad detectada con tu álbum actual.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 18),

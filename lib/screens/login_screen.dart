@@ -45,6 +45,38 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
+  Future<void> _enterAsGuest() async {
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+  });
+
+  try {
+    final credential = await _auth.signInAnonymously();
+    final user = credential.user;
+
+    if (user == null) {
+      throw Exception('No se pudo crear sesión de invitado.');
+    }
+
+    await _userRepository.initUserIfNeeded(user: user);
+    _closeAuthScreenAfterSuccess();
+  } on FirebaseAuthException catch (e) {
+    setState(() {
+      _errorMessage = _firebaseErrorToSpanish(e);
+    });
+  } catch (e) {
+    setState(() {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+    });
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+}
 
   Future<void> _submit() async {
     setState(() {
@@ -74,22 +106,43 @@ class _LoginScreenState extends State<LoginScreen> {
       UserCredential credential;
 
       if (_isRegisterMode) {
-        credential = await _auth.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
+  final currentUser = _auth.currentUser;
 
-        try {
-          await _userRepository.initUserIfNeeded(user: credential.user!);
-        } catch (e) {
-          await credential.user?.delete();
-          await _auth.signOut();
-          rethrow;
-        }
+  if (currentUser != null && currentUser.isAnonymous) {
+    final authCredential = EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
 
-        _closeAuthScreenAfterSuccess();
-        return;
-      }
+    credential = await currentUser.linkWithCredential(authCredential);
+
+    final linkedUser = credential.user;
+
+    if (linkedUser == null) {
+      throw Exception('No se pudo convertir la cuenta invitada.');
+    }
+
+    await _userRepository.initUserIfNeeded(user: linkedUser);
+    _closeAuthScreenAfterSuccess();
+    return;
+  }
+
+  credential = await _auth.createUserWithEmailAndPassword(
+    email: email,
+    password: password,
+  );
+
+  try {
+    await _userRepository.initUserIfNeeded(user: credential.user!);
+  } catch (e) {
+    await credential.user?.delete();
+    await _auth.signOut();
+    rethrow;
+  }
+
+  _closeAuthScreenAfterSuccess();
+  return;
+}
 
       credential = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -234,6 +287,15 @@ class _LoginScreenState extends State<LoginScreen> {
                             : 'Crear cuenta nueva',
                       ),
                     ),
+                    const SizedBox(height: 8),
+SizedBox(
+  width: double.infinity,
+  child: OutlinedButton.icon(
+    onPressed: _isLoading ? null : _enterAsGuest,
+    icon: const Icon(Icons.visibility_outlined),
+    label: const Text('Ingresar como invitado'),
+  ),
+),
                     const SizedBox(height: 12),
                     const Divider(),
                     const FeedbackFooter(),

@@ -15,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../widgets/feedback_footer.dart';
 import 'commune_posts_screen.dart';
 import 'share_profile_screen.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -48,6 +49,17 @@ class _HomeScreenState extends State<HomeScreen> {
     _receivedLikesCountFuture = _loadReceivedLikesCount(user.uid);
     _confirmedMatchesCountFuture = _loadConfirmedMatchesCount(user.uid);
   }
+  bool get _isGuest {
+  return FirebaseAuth.instance.currentUser?.isAnonymous ?? false;
+}
+
+void _showCreateAccountMessage() {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Crea una cuenta para usar esta función.'),
+    ),
+  );
+}
 
   Future<void> _openStaticPage(String path) async {
     final uri = Uri.base.resolve(path);
@@ -134,6 +146,39 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 16),
                 const PlanStatusCard(),
                 const SizedBox(height: 12),
+                if (_isGuest) ...[
+  Card(
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Estás usando TruequeGol como invitado',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Puedes marcar, importar y exportar tus láminas. '
+            'Para dar like, publicar, comentar, aparecer en matching o compartir tu perfil, crea una cuenta.',
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () {
+              _openScreen(const LoginScreen(initialRegisterMode: true));
+            },
+            icon: const Icon(Icons.person_add_alt_1),
+            label: const Text('Crear cuenta y conservar mis láminas'),
+          ),
+        ],
+      ),
+    ),
+  ),
+  const SizedBox(height: 12),
+],
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.install_mobile),
@@ -163,6 +208,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
+                      if (_isGuest) {
+    _showCreateAccountMessage();
+    return;
+  }
                       _openScreen(const ProfileScreen());
                     },
                   ),
@@ -191,6 +240,10 @@ Card(
     ),
     trailing: const Icon(Icons.chevron_right),
     onTap: () {
+      if (_isGuest) {
+    _showCreateAccountMessage();
+    return;
+  }
       _openScreen(const ShareProfileScreen());
     },
   ),
@@ -205,6 +258,10 @@ Card(
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
+                      if (_isGuest) {
+    _showCreateAccountMessage();
+    return;
+  }
                       _openScreen(const MatchingScreen());
                     },
                   ),
@@ -219,6 +276,10 @@ Card(
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
+                      if (_isGuest) {
+    _showCreateAccountMessage();
+    return;
+  }
                       _openScreen(const CommunePostsScreen());
                     },
                   ),
@@ -235,6 +296,10 @@ Card(
                       future: _receivedLikesCountFuture,
                     ),
                     onTap: () {
+                      if (_isGuest) {
+    _showCreateAccountMessage();
+    return;
+  }
                       _openScreen(const ReceivedLikesScreen());
                     },
                   ),
@@ -251,6 +316,10 @@ Card(
                       future: _confirmedMatchesCountFuture,
                     ),
                     onTap: () {
+                      if (_isGuest) {
+    _showCreateAccountMessage();
+    return;
+  }
                       _openScreen(const ConfirmedMatchesScreen());
                     },
                   ),
@@ -265,6 +334,10 @@ Card(
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
+                      if (_isGuest) {
+    _showCreateAccountMessage();
+    return;
+  }
                       _openScreen(const UserSearchScreen());
                     },
                   ),
