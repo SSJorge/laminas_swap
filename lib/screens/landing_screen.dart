@@ -24,28 +24,27 @@ class LandingScreen extends StatelessWidget {
       ),
     );
   }
+
   Future<void> _enterAsGuest(BuildContext context) async {
-  try {
-    final credential = await FirebaseAuth.instance.signInAnonymously();
-    final user = credential.user;
+    try {
+      final credential = await FirebaseAuth.instance.signInAnonymously();
+      final user = credential.user;
 
-    if (user == null) {
-      throw Exception('No se pudo crear sesión de invitado.');
+      if (user == null) {
+        throw Exception('No se pudo crear sesión de invitado.');
+      }
+
+      await UserRepository(
+        FirebaseFirestore.instance,
+      ).initUserIfNeeded(user: user);
+    } catch (e) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
     }
-
-    await UserRepository(
-      FirebaseFirestore.instance,
-    ).initUserIfNeeded(user: user);
-  } catch (e) {
-    if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(e.toString().replaceFirst('Exception: ', '')),
-      ),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -75,16 +74,17 @@ class LandingScreen extends StatelessWidget {
                   const _LandingHeader(),
                   const SizedBox(height: 28),
                   _HeroCard(
-  onCreateAccount: () {
-    _openAuth(context, registerMode: true);
-  },
-  onLogin: () {
-    _openAuth(context, registerMode: false);
-  },
-  onGuest: () {
-    _enterAsGuest(context);
-  },
-),
+                    onCreateAccount: () {
+                      _openAuth(context, registerMode: true);
+                    },
+                    onLogin: () {
+                      _openAuth(context, registerMode: false);
+                    },
+                    onGuest: () {
+                      _enterAsGuest(context);
+                    },
+                    onDetails: () => _openLegalPage('/how-it-works.html'),
+                  ),
                   const SizedBox(height: 20),
                   const _HowItWorksSection(),
                   const SizedBox(height: 20),
@@ -94,6 +94,7 @@ class LandingScreen extends StatelessWidget {
                     onInstall: () => _openLegalPage('/install.html'),
                     onPrivacy: () => _openLegalPage('/privacy.html'),
                     onTerms: () => _openLegalPage('/terms.html'),
+                    onFaq: () => _openLegalPage('/faq.html'),
                     onAccountDeletion: () =>
                         _openLegalPage('/account-deletion.html'),
                   ),
@@ -127,14 +128,6 @@ class LandingScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   const FeedbackFooter(dark: true),
                   const SizedBox(height: 16),
-                  Center(
-                    child: Text(
-                      'Versión PWA en validación inicial',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -186,15 +179,16 @@ class _LandingHeader extends StatelessWidget {
 
 class _HeroCard extends StatelessWidget {
   const _HeroCard({
-  required this.onCreateAccount,
-  required this.onLogin,
-  required this.onGuest,
-});
+    required this.onCreateAccount,
+    required this.onLogin,
+    required this.onGuest,
+    required this.onDetails,
+  });
 
-final VoidCallback onCreateAccount;
-final VoidCallback onLogin;
-final VoidCallback onGuest;
-
+  final VoidCallback onCreateAccount;
+  final VoidCallback onLogin;
+  final VoidCallback onGuest;
+  final VoidCallback onDetails;
   @override
   Widget build(BuildContext context) {
     const grassGreen = Color(0xFF13A85B);
@@ -281,18 +275,31 @@ final VoidCallback onGuest;
                       ),
                     ),
                     OutlinedButton.icon(
-  onPressed: onGuest,
-  icon: const Icon(Icons.visibility_outlined),
-  label: const Text('Ingresar como invitado'),
-  style: OutlinedButton.styleFrom(
-    foregroundColor: const Color(0xFF405247),
-    side: const BorderSide(color: Color(0xFFB8C7BE)),
-    padding: const EdgeInsets.symmetric(
-      horizontal: 18,
-      vertical: 14,
-    ),
-  ),
-),
+                      onPressed: onGuest,
+                      icon: const Icon(Icons.visibility_outlined),
+                      label: const Text('Ingresar como invitado'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF405247),
+                        side: const BorderSide(color: Color(0xFFB8C7BE)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: onDetails,
+                      icon: const Icon(Icons.info_outline),
+                      label: const Text('Detalles'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF0B7A3B),
+                        side: const BorderSide(color: Color(0xFF0B7A3B)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -512,12 +519,14 @@ class _LegalFooter extends StatelessWidget {
     required this.onInstall,
     required this.onPrivacy,
     required this.onTerms,
+    required this.onFaq,
     required this.onAccountDeletion,
   });
 
   final VoidCallback onInstall;
   final VoidCallback onPrivacy;
   final VoidCallback onTerms;
+  final VoidCallback onFaq;
   final VoidCallback onAccountDeletion;
 
   @override
@@ -546,6 +555,13 @@ class _LegalFooter extends StatelessWidget {
           onPressed: onTerms,
           child: const Text(
             'Términos y condiciones',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+        TextButton(
+          onPressed: onFaq,
+          child: const Text(
+            'Preguntas frecuentes',
             style: TextStyle(color: Colors.white),
           ),
         ),
