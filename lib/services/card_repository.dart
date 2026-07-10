@@ -24,6 +24,23 @@ class CardRepository {
     );
   }
 
+  Future<Map<String, CardStatus>> fetchMyCardStatuses(String uid) async {
+    final snapshot = await _db
+        .collection('users')
+        .doc(uid)
+        .collection('cards')
+        .get();
+
+    final statuses = <String, CardStatus>{};
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      statuses[doc.id] = CardStatus.fromValue(data['status']);
+    }
+
+    return statuses;
+  }
+
   Future<void> importCardStatuses({
     required String uid,
     required Map<String, CardStatus> importedStatuses,
@@ -142,6 +159,112 @@ class CardRepository {
     );
 
     await batch.commit();
+  }
+
+  Future<void> registerExchangeForCurrentUser({
+    required String uid,
+    required Iterable<String> receivedCardIds,
+    required Iterable<String> stillDuplicateCardIds,
+    required Iterable<String> noLongerDuplicateCardIds,
+  }) async {
+    final currentStatuses = await fetchMyCardStatuses(uid);
+    final updatedStatuses = Map<String, CardStatus>.from(currentStatuses);
+    final cardById = {for (final card in allCardDefinitions) card.id: card};
+
+    Set<String> validIdsFrom(Iterable<String> ids) {
+      return ids.where(cardById.containsKey).toSet();
+    }
+
+    final receivedIds = validIdsFrom(receivedCardIds);
+    final stillDuplicateIds = validIdsFrom(stillDuplicateCardIds);
+    final noLongerDuplicateIds = validIdsFrom(
+      noLongerDuplicateCardIds,
+    ).difference(stillDuplicateIds);
+
+    for (final cardId in receivedIds) {
+      final currentStatus = updatedStatuses[cardId] ?? CardStatus.missing;
+
+      if (currentStatus == CardStatus.missing) {
+        updatedStatuses[cardId] = CardStatus.obtained;
+      }
+    }
+
+    for (final cardId in noLongerDuplicateIds) {
+      final currentStatus = updatedStatuses[cardId] ?? CardStatus.missing;
+
+      if (currentStatus == CardStatus.duplicate) {
+        updatedStatuses[cardId] = CardStatus.obtained;
+      }
+    }
+
+    for (final cardId in stillDuplicateIds) {
+      updatedStatuses[cardId] = CardStatus.duplicate;
+    }
+
+    final pendingWrites = <_PendingCardStatusWrite>[];
+
+    for (final card in allCardDefinitions) {
+      final currentStatus = currentStatuses[card.id] ?? CardStatus.missing;
+      final updatedStatus = updatedStatuses[card.id] ?? CardStatus.missing;
+
+      if (currentStatus == updatedStatus) {
+        continue;
+      }
+
+      pendingWrites.add(
+        _PendingCardStatusWrite(card: card, status: updatedStatus),
+      );
+    }
+
+    if (pendingWrites.isEmpty) {
+      return;
+    }
+
+    final summary = _buildSummary(updatedStatuses);
+    final now = FieldValue.serverTimestamp();
+    const maxWritesPerBatch = 450;
+
+    var batch = _db.batch();
+    var writeCount = 0;
+
+    Future<void> commitCurrentBatchIfNeeded({bool force = false}) async {
+      if (writeCount == 0 && !force) {
+        return;
+      }
+
+      await batch.commit();
+      batch = _db.batch();
+      writeCount = 0;
+    }
+
+    for (final pendingWrite in pendingWrites) {
+      _writeCardStatus(
+        batch: batch,
+        uid: uid,
+        card: pendingWrite.card,
+        status: pendingWrite.status,
+        now: now,
+      );
+
+      writeCount++;
+
+      if (writeCount >= maxWritesPerBatch) {
+        await commitCurrentBatchIfNeeded();
+      }
+    }
+
+    _writeUserSummary(batch: batch, uid: uid, summary: summary, now: now);
+    writeCount++;
+
+    _writePublicProfileSummary(
+      batch: batch,
+      uid: uid,
+      summary: summary,
+      now: now,
+    );
+    writeCount++;
+
+    await commitCurrentBatchIfNeeded(force: true);
   }
 
   Future<void> shiftCountryStatuses({

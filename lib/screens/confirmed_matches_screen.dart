@@ -9,6 +9,7 @@ import '../services/matching_repository.dart';
 import '../widgets/report_user_button.dart';
 import '../widgets/block_user_button.dart';
 import '../utils/card_display_utils.dart';
+import '../services/card_repository.dart';
 
 class ConfirmedMatchesScreen extends StatefulWidget {
   const ConfirmedMatchesScreen({super.key});
@@ -20,13 +21,17 @@ class ConfirmedMatchesScreen extends StatefulWidget {
 class _ConfirmedMatchesScreenState extends State<ConfirmedMatchesScreen> {
   late final MatchingRepository _matchingRepository;
   late Future<List<ConfirmedMatch>> _matchesFuture;
+  late final CardRepository _cardRepository;
 
   final _cardById = {for (final card in allCardDefinitions) card.id: card};
 
   @override
   void initState() {
     super.initState();
-    _matchingRepository = MatchingRepository(FirebaseFirestore.instance);
+    final db = FirebaseFirestore.instance;
+
+    _matchingRepository = MatchingRepository(db);
+    _cardRepository = CardRepository(db);
     _matchesFuture = _loadConfirmedMatches();
   }
 
@@ -38,6 +43,198 @@ class _ConfirmedMatchesScreenState extends State<ConfirmedMatchesScreen> {
     }
 
     return _matchingRepository.findConfirmedMatches(uid: user.uid);
+  }
+
+  Future<void> _showRegisterExchangeSheet(ConfirmedMatch confirmedMatch) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return;
+    }
+
+    final candidate = confirmedMatch.candidate;
+    final receivedIds = candidate.theyCanGiveIds.toSet();
+    final stillDuplicateIds = <String>{};
+    final offeredIds = candidate.iCanGiveIds.toSet();
+
+    var isSaving = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final noLongerDuplicateIds = offeredIds
+                .difference(stillDuplicateIds)
+                .toSet();
+
+            Future<void> confirmExchange() async {
+              if (isSaving) {
+                return;
+              }
+
+              setModalState(() {
+                isSaving = true;
+              });
+
+              final messenger = ScaffoldMessenger.of(this.context);
+
+              try {
+                await _cardRepository.registerExchangeForCurrentUser(
+                  uid: user.uid,
+                  receivedCardIds: receivedIds,
+                  stillDuplicateCardIds: stillDuplicateIds,
+                  noLongerDuplicateCardIds: noLongerDuplicateIds,
+                );
+
+                if (!mounted) {
+                  return;
+                }
+
+                Navigator.of(sheetContext).pop();
+
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Intercambio registrado en tu álbum.'),
+                  ),
+                );
+
+                await _refresh();
+              } catch (e) {
+                if (!mounted) {
+                  return;
+                }
+
+                setModalState(() {
+                  isSaving = false;
+                });
+
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(e.toString().replaceFirst('Exception: ', '')),
+                  ),
+                );
+              }
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                ),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.86,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Registrar intercambio',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Actualiza tu álbum según lo que intercambiaste con ${candidate.displayName}.',
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: ListView(
+                          children: [
+                            _ExchangeSelectionSection(
+                              title: 'Láminas que recibiste',
+                              subtitle:
+                                  'Marca las láminas que realmente recibiste. Las seleccionadas pasarán a obtenidas.',
+                              emptyText:
+                                  'Esta persona no tenía repetidas que te faltaran.',
+                              cardIds: candidate.theyCanGiveIds,
+                              selectedIds: receivedIds,
+                              formatCardId: _formatCardId,
+                              selectedLabel: 'Recibida',
+                              onChanged: (cardId, selected) {
+                                setModalState(() {
+                                  if (selected) {
+                                    receivedIds.add(cardId);
+                                  } else {
+                                    receivedIds.remove(cardId);
+                                  }
+                                });
+                              },
+                              onSelectAll: () {
+                                setModalState(() {
+                                  receivedIds
+                                    ..clear()
+                                    ..addAll(candidate.theyCanGiveIds);
+                                });
+                              },
+                              onClearAll: () {
+                                setModalState(receivedIds.clear);
+                              },
+                            ),
+                            const SizedBox(height: 18),
+                            _ExchangeSelectionSection(
+                              title: 'Láminas que tú ofrecías',
+                              subtitle:
+                                  'Marca cuáles todavía tienes repetidas después del intercambio. Si no entregaste alguna, déjala marcada.',
+                              emptyText:
+                                  'No tenías repetidas que le faltaran a esta persona.',
+                              cardIds: candidate.iCanGiveIds,
+                              selectedIds: stillDuplicateIds,
+                              formatCardId: _formatCardId,
+                              selectedLabel: 'Aún repetida',
+                              onChanged: (cardId, selected) {
+                                setModalState(() {
+                                  if (selected) {
+                                    stillDuplicateIds.add(cardId);
+                                  } else {
+                                    stillDuplicateIds.remove(cardId);
+                                  }
+                                });
+                              },
+                              onSelectAll: () {
+                                setModalState(() {
+                                  stillDuplicateIds
+                                    ..clear()
+                                    ..addAll(candidate.iCanGiveIds);
+                                });
+                              },
+                              onClearAll: () {
+                                setModalState(stillDuplicateIds.clear);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: isSaving ? null : confirmExchange,
+                          icon: isSaving
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.check),
+                          label: const Text('Confirmar intercambio'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _refresh() async {
@@ -134,6 +331,9 @@ class _ConfirmedMatchesScreenState extends State<ConfirmedMatchesScreen> {
                         initial: _initialFor(
                           confirmedMatch.candidate.displayName,
                         ),
+                        onRegisterExchange: () {
+                          return _showRegisterExchangeSheet(confirmedMatch);
+                        },
                         onShareMyContact: () {
                           return _shareMyContact(confirmedMatch.candidate.uid);
                         },
@@ -262,6 +462,7 @@ class _ConfirmedMatchCard extends StatelessWidget {
     required this.onHideMyContact,
     required this.onCopyDescription,
     required this.onCopyContact,
+    required this.onRegisterExchange,
   });
 
   final ConfirmedMatch confirmedMatch;
@@ -271,6 +472,7 @@ class _ConfirmedMatchCard extends StatelessWidget {
   final Future<void> Function()? onCopyContact;
   final Future<void> Function() onShareMyContact;
   final Future<void> Function() onHideMyContact;
+  final Future<void> Function() onRegisterExchange;
 
   @override
   Widget build(BuildContext context) {
@@ -328,6 +530,15 @@ class _ConfirmedMatchCard extends StatelessWidget {
             formatCardId: formatCardId,
           ),
           const SizedBox(height: 16),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onRegisterExchange,
+              icon: const Icon(Icons.swap_horiz),
+              label: const Text('Registrar intercambio'),
+            ),
+          ),
           _CopyableInfoBlock(
             title: 'Descripción',
             value: confirmedMatch.hasDescription
@@ -504,6 +715,95 @@ class _CardIdSection extends StatelessWidget {
                   Chip(label: Text(formatCardId(cardId))),
               ],
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExchangeSelectionSection extends StatelessWidget {
+  const _ExchangeSelectionSection({
+    required this.title,
+    required this.subtitle,
+    required this.emptyText,
+    required this.cardIds,
+    required this.selectedIds,
+    required this.formatCardId,
+    required this.selectedLabel,
+    required this.onChanged,
+    required this.onSelectAll,
+    required this.onClearAll,
+  });
+
+  final String title;
+  final String subtitle;
+  final String emptyText;
+  final List<String> cardIds;
+  final Set<String> selectedIds;
+  final String Function(String cardId) formatCardId;
+  final String selectedLabel;
+  final void Function(String cardId, bool selected) onChanged;
+  final VoidCallback onSelectAll;
+  final VoidCallback onClearAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final sortedIds = [...cardIds];
+    sortedIds.sort((a, b) => formatCardId(a).compareTo(formatCardId(b)));
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 4),
+          Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 10),
+          if (sortedIds.isEmpty)
+            Text(emptyText)
+          else ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: onSelectAll,
+                  icon: const Icon(Icons.select_all),
+                  label: const Text('Marcar todo'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onClearAll,
+                  icon: const Icon(Icons.clear_all),
+                  label: const Text('Desmarcar todo'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            for (final cardId in sortedIds)
+              CheckboxListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                value: selectedIds.contains(cardId),
+                title: Text(formatCardId(cardId)),
+                subtitle: selectedIds.contains(cardId)
+                    ? Text(selectedLabel)
+                    : null,
+                onChanged: (value) {
+                  onChanged(cardId, value == true);
+                },
+              ),
+          ],
         ],
       ),
     );
