@@ -14,7 +14,6 @@ import '../utils/sticker_list_import_parser.dart';
 import 'package:flutter/services.dart';
 import '../utils/sticker_list_exporter.dart';
 
-
 class CardsScreen extends StatefulWidget {
   const CardsScreen({super.key});
 
@@ -56,20 +55,19 @@ class _CardsScreenState extends State<CardsScreen> {
       _isLoadingExpansionState = false;
     });
   }
+
   Future<void> _copyExportList({
-  required Map<String, CardStatus> currentStatuses,
-}) async {
-  final exportText = buildStickerExportList(currentStatuses);
-  final messenger = ScaffoldMessenger.of(context);
+    required Map<String, CardStatus> currentStatuses,
+  }) async {
+    final exportText = buildStickerExportList(currentStatuses);
+    final messenger = ScaffoldMessenger.of(context);
 
-  await Clipboard.setData(ClipboardData(text: exportText));
+    await Clipboard.setData(ClipboardData(text: exportText));
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  messenger.showSnackBar(
-    const SnackBar(content: Text('Lista copiada.')),
-  );
-}
+    messenger.showSnackBar(const SnackBar(content: Text('Lista copiada.')));
+  }
 
   String _expansionKey({required String uid, required String tileId}) {
     return 'cards_screen_expanded_${uid}_$tileId';
@@ -477,39 +475,39 @@ class _CardsScreenState extends State<CardsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-  'Importar / exportar lista',
-  style: Theme.of(context).textTheme.titleMedium
-      ?.copyWith(fontWeight: FontWeight.w900),
-),
-const SizedBox(height: 6),
-const Text(
-  'Pega una lista para autocompletar tu álbum o copia tu lista actual '
-  'para compartirla.',
-),
-const SizedBox(height: 12),
-Wrap(
-  spacing: 12,
-  runSpacing: 8,
-  children: [
-    FilledButton.icon(
-      onPressed: () {
-        _showImportListDialog(
-          uid: user.uid,
-          currentStatuses: statuses,
-        );
-      },
-      icon: const Icon(Icons.upload_file),
-      label: const Text('Importar lista'),
-    ),
-    OutlinedButton.icon(
-      onPressed: () {
-        _copyExportList(currentStatuses: statuses);
-      },
-      icon: const Icon(Icons.copy),
-      label: const Text('Copiar lista'),
-    ),
-  ],
-),
+                            'Importar / exportar lista',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Pega una lista para autocompletar tu álbum o copia tu lista actual '
+                            'para compartirla.',
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 8,
+                            children: [
+                              FilledButton.icon(
+                                onPressed: () {
+                                  _showImportListDialog(
+                                    uid: user.uid,
+                                    currentStatuses: statuses,
+                                  );
+                                },
+                                icon: const Icon(Icons.upload_file),
+                                label: const Text('Importar lista'),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  _copyExportList(currentStatuses: statuses);
+                                },
+                                icon: const Icon(Icons.copy),
+                                label: const Text('Copiar lista'),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -728,38 +726,39 @@ class _GroupSection extends StatelessWidget {
         subtitle: Text(counts.label),
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: isSavingGroup
-                      ? null
-                      : () {
-                          onShiftGroup(1);
-                        },
-                  icon: const Icon(Icons.add),
-                  label: const Text('+1 a todo el grupo'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  onPressed: isSavingGroup
-                      ? null
-                      : () {
-                          onShiftGroup(-1);
-                        },
-                  icon: const Icon(Icons.remove),
-                  label: const Text('-1 a todo el grupo'),
-                ),
-              ),
-            ],
-          ),
-          if (isSavingGroup) ...[
-            const SizedBox(height: 12),
-            const LinearProgressIndicator(),
-          ],
-          const SizedBox(height: 12),
+          // Row(
+          //   children: [
+          //     Expanded(
+          //       child: FilledButton.tonalIcon(
+          //         onPressed: isSavingGroup
+          //             ? null
+          //             : () {
+          //                 onShiftGroup(1);
+          //               },
+          //         icon: const Icon(Icons.add),
+          //         label: const Text('+1 a todo el grupo'),
+          //       ),
+          //     ),
+          //     const SizedBox(width: 12),
+          //     Expanded(
+          //       child: FilledButton.tonalIcon(
+          //         onPressed: isSavingGroup
+          //             ? null
+          //             : () {
+          //                 onShiftGroup(-1);
+          //               },
+          //         icon: const Icon(Icons.remove),
+          //         label: const Text('-1 a todo el grupo'),
+          //       ),
+          //     ),
+          //   ],
+          // ),
+          // if (isSavingGroup) ...[
+          //   const SizedBox(height: 12),
+          //   const LinearProgressIndicator(),
+          // ],
+          // const SizedBox(height: 12),
+          const SizedBox(height: 8),
           for (final country in group.countries)
             _CountrySection(
               country: country,
