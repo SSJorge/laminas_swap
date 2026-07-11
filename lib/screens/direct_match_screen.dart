@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/match_candidate.dart';
 import '../services/matching_repository.dart';
+import '../widgets/compatible_cards_preview.dart';
 
 class DirectMatchScreen extends StatefulWidget {
   const DirectMatchScreen({
@@ -220,7 +221,7 @@ class _DirectCandidateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasCompatibility = candidate.totalMatchCount > 0;
+    // final hasCompatibility = candidate.totalMatchCount > 0;
 
     return Card(
       child: Padding(
@@ -263,12 +264,7 @@ class _DirectCandidateCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              hasCompatibility
-                  ? 'El detalle de láminas y contacto se muestra después del match mutuo.'
-                  : 'Aún no hay compatibilidad detectada con tu álbum actual.',
-              textAlign: TextAlign.center,
-            ),
+            CompatibleCardsPreview(candidate: candidate),
             const SizedBox(height: 18),
             Row(
               children: [

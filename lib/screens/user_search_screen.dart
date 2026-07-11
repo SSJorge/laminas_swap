@@ -10,6 +10,7 @@ import '../services/user_search_repository.dart';
 import '../data/daily_limits.dart';
 import '../services/daily_quota_repository.dart';
 import '../widgets/daily_limits_card.dart';
+import '../widgets/compatible_cards_preview.dart';
 
 class UserSearchScreen extends StatefulWidget {
   const UserSearchScreen({super.key});
@@ -155,8 +156,8 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
                 child: Padding(
                   padding: EdgeInsets.all(16),
                   child: Text(
-                    'Busca a alguien por su nombre de usuario exacto. '
-                    'Solo verás cantidades de compatibilidad hasta que exista match mutuo.',
+                    'Busca a alguien por su nombre de usuario exacto.\n'
+'Podrás ver las láminas compatibles antes del match. El contacto se desbloquea con match mutuo.',
                   ),
                 ),
               ),
@@ -250,10 +251,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        const Text(
-                          'El detalle exacto se muestra solo después del match mutuo.',
-                          textAlign: TextAlign.center,
-                        ),
+                        CompatibleCardsPreview(candidate: candidate),
                         const SizedBox(height: 16),
                         Row(
                           children: [

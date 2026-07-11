@@ -11,6 +11,7 @@ import '../widgets/daily_limits_card.dart';
 import '../widgets/report_user_button.dart';
 import '../widgets/block_user_button.dart';
 import '../widgets/public_description_preview.dart';
+import '../widgets/compatible_cards_preview.dart';
 
 class MatchingScreen extends StatefulWidget {
   const MatchingScreen({super.key});
@@ -39,7 +40,7 @@ class _MatchingScreenState extends State<MatchingScreen> {
       return Future.error('No hay usuario autenticado.');
     }
 
-    return _matchingRepository.findMatches(uid: user.uid);
+    return _matchingRepository.findMatches(uid: user.uid, limit: 300);
   }
 
   Future<void> _refresh() async {
@@ -56,20 +57,18 @@ class _MatchingScreenState extends State<MatchingScreen> {
   }) async {
     final user = FirebaseAuth.instance.currentUser;
 
-if (user == null || _savingCandidateIds.contains(candidate.uid)) {
+    if (user == null || _savingCandidateIds.contains(candidate.uid)) {
       return;
     }
 
-if (user.isAnonymous) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-      content: Text('Crea una cuenta para dar like o dislike.'),
-    ),
-  );
-  return;
-}
-
-    
+    if (user.isAnonymous) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Crea una cuenta para dar like o dislike.'),
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _savingCandidateIds.add(candidate.uid);
@@ -186,8 +185,8 @@ if (user.isAnonymous) {
                       entitlementsSnapshot.data ?? UserEntitlements.free();
 
                   final showAds = !entitlements.adsRemoved;
-                  final candidateSlots = showAds ? 3 : 4;
-                  final visibleMatches = matches.take(candidateSlots).toList();
+                  // final candidateSlots = showAds ? 3 : 4;
+                  // final visibleMatches = matches.take(candidateSlots).toList();
 
                   return RefreshIndicator(
                     onRefresh: _refresh,
@@ -201,7 +200,8 @@ if (user.isAnonymous) {
                         ),
                         const SizedBox(height: 12),
                         _DiscoverGrid(
-                          candidates: visibleMatches,
+                          // candidates: visibleMatches,
+                          candidates: matches,
                           showAdSlot: showAds,
                           isSavingCandidate: (candidate) {
                             return _savingCandidateIds.contains(candidate.uid);
@@ -223,8 +223,8 @@ if (user.isAnonymous) {
                         const SizedBox(height: 12),
                         Text(
                           showAds
-                              ? 'Gratis: se muestran hasta 3 usuarios y 1 espacio de anuncio.'
-                              : 'Sin anuncios: se muestran hasta 4 usuarios.',
+                              ? 'Gratis: puedes ver todos los usuarios compatibles. Aparecerá un espacio publicitario cada 3 perfiles.'
+                              : 'Sin anuncios: puedes ver todos los usuarios compatibles sin espacios publicitarios.',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
@@ -251,8 +251,8 @@ class _MatchingInfoCard extends StatelessWidget {
         padding: EdgeInsets.all(16),
         child: Text(
           'Aquí ves usuarios de tu región con compatibilidad. '
-          'La descripción pública puede verse antes del match. '
-          'Las láminas específicas, descripción privada y contacto se muestran después de un match mutuo.',
+          'La descripción pública y las láminas compatibles pueden verse antes del match.\n'
+          'El contacto y la descripción privada se desbloquean después de un match mutuo.',
         ),
       ),
     );
@@ -276,51 +276,53 @@ class _DiscoverGrid extends StatelessWidget {
   final Future<void> Function(MatchCandidate candidate) onLike;
   final Future<void> Function(MatchCandidate candidate) onDislike;
 
+  List<Widget> _buildCards() {
+    final cards = <Widget>[];
+
+    for (var index = 0; index < candidates.length; index++) {
+      final candidate = candidates[index];
+
+      cards.add(
+        _MatchCandidateCard(
+          candidate: candidate,
+          isSaving: isSavingCandidate(candidate),
+          initial: initialFor(candidate.displayName),
+          onLike: () {
+            return onLike(candidate);
+          },
+          onDislike: () {
+            return onDislike(candidate);
+          },
+        ),
+      );
+
+      final shouldInsertAd = showAdSlot && (index + 1) % 3 == 0;
+
+      if (shouldInsertAd) {
+        cards.add(const AdPlaceholderCard());
+      }
+    }
+
+    return cards;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final cards = _buildCards();
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 720;
+        final cardWidth = isWide
+            ? (constraints.maxWidth - 12) / 2
+            : constraints.maxWidth;
 
-        final cards = <Widget>[
-          for (final candidate in candidates)
-            _MatchCandidateCard(
-              candidate: candidate,
-              isSaving: isSavingCandidate(candidate),
-              initial: initialFor(candidate.displayName),
-              onLike: () {
-                return onLike(candidate);
-              },
-              onDislike: () {
-                return onDislike(candidate);
-              },
-            ),
-          if (showAdSlot) const AdPlaceholderCard(),
-        ];
-
-        // En celular: usar Column para que cada tarjeta tenga altura natural.
-        if (!isWide) {
-          return Column(
-            children: [
-              for (final card in cards) ...[card, const SizedBox(height: 12)],
-            ],
-          );
-        }
-
-        // En pantallas grandes: sí usar grilla.
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: cards.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.15,
-          ),
-          itemBuilder: (context, index) {
-            return cards[index];
-          },
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final card in cards) SizedBox(width: cardWidth, child: card),
+          ],
         );
       },
     );
@@ -410,6 +412,8 @@ class _MatchCandidateCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             PublicDescriptionPreview(description: candidate.publicDescription),
+            const SizedBox(height: 10),
+            CompatibleCardsPreview(candidate: candidate),
             const SizedBox(height: 10),
 
             // Botones principales siempre visibles.

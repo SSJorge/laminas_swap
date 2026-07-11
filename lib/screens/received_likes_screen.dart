@@ -11,6 +11,7 @@ import '../widgets/daily_limits_card.dart';
 import '../widgets/report_user_button.dart';
 import '../widgets/block_user_button.dart';
 import '../widgets/public_description_preview.dart';
+import '../widgets/compatible_cards_preview.dart';
 
 class ReceivedLikesScreen extends StatefulWidget {
   const ReceivedLikesScreen({super.key});
@@ -244,8 +245,8 @@ class _ReceivedLikesInfoCard extends StatelessWidget {
         padding: EdgeInsets.all(16),
         child: Text(
           'Estas personas ya te dieron like.\n'
-'Antes de responder solo ves la cantidad de láminas compatibles.\n'
-'Si tú también les das like, se crea un match y se desbloquea el detalle.',
+'Antes de responder puedes ver las láminas compatibles exactas.\n'
+'Si tú también les das like, se crea un match y se desbloquea el contacto.',
         ),
       ),
     );
@@ -272,51 +273,41 @@ class _ReceivedLikesGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 720;
+  builder: (context, constraints) {
+    final isWide = constraints.maxWidth >= 720;
+    final cardWidth = isWide
+        ? (constraints.maxWidth - 12) / 2
+        : constraints.maxWidth;
 
-        final cards = <Widget>[
-          for (final candidate in candidates)
-            _ReceivedLikeCard(
-              candidate: candidate,
-              isSaving: isSavingCandidate(candidate),
-              initial: initialFor(candidate.displayName),
-              onLike: () {
-                return onLike(candidate);
-              },
-              onDislike: () {
-                return onDislike(candidate);
-              },
-            ),
-          if (showAdSlot) const AdPlaceholderCard(),
-        ];
-
-        // En celular: tarjetas con altura natural.
-        if (!isWide) {
-          return Column(
-            children: [
-              for (final card in cards) ...[card, const SizedBox(height: 12)],
-            ],
-          );
-        }
-
-        // En pantallas grandes: grilla.
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: cards.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.15,
-          ),
-          itemBuilder: (context, index) {
-            return cards[index];
+    final cards = <Widget>[
+      for (final candidate in candidates)
+        _ReceivedLikeCard(
+          candidate: candidate,
+          isSaving: isSavingCandidate(candidate),
+          initial: initialFor(candidate.displayName),
+          onLike: () {
+            return onLike(candidate);
           },
-        );
-      },
+          onDislike: () {
+            return onDislike(candidate);
+          },
+        ),
+      if (showAdSlot) const AdPlaceholderCard(),
+    ];
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        for (final card in cards)
+          SizedBox(
+            width: cardWidth,
+            child: card,
+          ),
+      ],
     );
+  },
+);
   }
 }
 
@@ -403,6 +394,8 @@ class _ReceivedLikeCard extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             PublicDescriptionPreview(description: candidate.publicDescription),
+            const SizedBox(height: 10),
+CompatibleCardsPreview(candidate: candidate),
             const SizedBox(height: 10),
 
             // Acciones principales.

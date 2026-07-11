@@ -694,28 +694,65 @@ class _CardIdSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sortedIds = [...cardIds];
-
     sortedIds.sort((a, b) => formatCardId(a).compareTo(formatCardId(b)));
 
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
-          if (sortedIds.isEmpty)
-            Text(emptyText)
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final cardId in sortedIds)
-                  Chip(label: Text(formatCardId(cardId))),
-              ],
-            ),
-        ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 8),
+        if (sortedIds.isEmpty)
+          Text(emptyText)
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 8.0;
+              final itemWidth = (constraints.maxWidth - spacing) / 2;
+
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  for (final cardId in sortedIds)
+                    SizedBox(
+                      width: itemWidth,
+                      child: _MatchCardLabel(text: formatCardId(cardId)),
+                    ),
+                ],
+              );
+            },
+          ),
+      ],
+    );
+  }
+}
+
+class _MatchCardLabel extends StatelessWidget {
+  const _MatchCardLabel({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(fontSize: 11, height: 1.15),
       ),
     );
   }
